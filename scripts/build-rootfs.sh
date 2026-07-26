@@ -32,7 +32,7 @@ chmod 0755 /usr/sbin/policy-rc.d
 apt-get update
 apt-get install -y --no-install-recommends \
   systemd-sysv systemd-resolved openssh-server iproute2 iputils-ping \
-  busybox-static ca-certificates curl nftables wireguard-tools \
+  busybox-static ca-certificates curl openssl nftables wireguard-tools \
   sudo git tmux rsync zstd jq bash-completion \
   vim-tiny less kmod procps
 apt-get clean
