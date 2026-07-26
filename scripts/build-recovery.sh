@@ -5,7 +5,7 @@ root_dir=$(cd "$(dirname "$0")/.." && pwd)
 out_dir=${OUT_DIR:-"$root_dir/out"}
 work_dir=${WORK_DIR:-"$root_dir/build/recovery"}
 rootfs_dir=${ROOTFS_DIR:-"$root_dir/build/rootfs-mounted"}
-init_file=${INIT_FILE:-"$root_dir/initramfs/init"}
+init_file=${INIT_FILE:-"$root_dir/initramfs/init-ab"}
 device_repo=https://github.com/JeyKul/android_device_samsung_gts7xlwifi-twrp.git
 device_commit=0de0716a3478b16b0a5ec45c910d6787d61d352c
 partition_size=86888448
@@ -77,7 +77,14 @@ python3 "$avbtool" add_hash_footer \
   --rollback_index 1 \
   --rollback_index_location 1
 
-python3 "$avbtool" verify_image --image "$image"
+# avbtool resolves a hash descriptor by its partition name, so provide the
+# canonical recovery.img name beside our descriptive artifact during verify.
+verify_link="$out_dir/recovery.img"
+ln -sfn "$(basename "$image")" "$verify_link"
+verify_status=0
+python3 "$avbtool" verify_image --image "$image" || verify_status=$?
+rm -f "$verify_link"
+[ "$verify_status" -eq 0 ] || exit "$verify_status"
 python3 "$avbtool" info_image --image "$image" >"$image.avb.txt"
 sha256sum "$image" >"$image.sha256"
 
