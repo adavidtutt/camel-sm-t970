@@ -1,0 +1,86 @@
+#!/system/bin/sh
+
+MODDIR=${0%/*}
+VERSION=@VERSION@
+EXPECTED=@SHA256@
+IMAGE_SIZE=@IMAGE_SIZE@
+IMAGE_BLOCKS=@IMAGE_BLOCKS@
+IMAGE=$MODDIR/camel-recovery.img
+SD=/storage/3963-3639/camel-linux
+LOGDIR=$SD/logs
+BACKUPDIR=$SD/backups
+BLOCK=/dev/block/by-name/recovery
+
+# Disable first. A reboot or crash can never repeat the partition write.
+touch "$MODDIR/disable"
+
+[ -d "$SD" ] || exit 9
+mkdir -p "$LOGDIR" "$BACKUPDIR" || exit 9
+LOG=$LOGDIR/recovery-$VERSION-install.log
+exec >"$LOG" 2>&1
+
+echo "CAMEL recovery $VERSION one-shot installer"
+date -Is
+
+[ -f "$IMAGE" ] || {
+  echo "FAIL: embedded recovery image is missing"
+  exit 10
+}
+actual=$(sha256sum "$IMAGE" | awk '{print $1}')
+[ "$actual" = "$EXPECTED" ] || {
+  echo "FAIL: source hash mismatch: $actual"
+  exit 11
+}
+[ "$(stat -c %s "$IMAGE")" = "$IMAGE_SIZE" ] || {
+  echo "FAIL: source size mismatch"
+  exit 12
+}
+[ -b "$BLOCK" ] || {
+  echo "FAIL: recovery block missing"
+  exit 13
+}
+
+partition_size=$(blockdev --getsize64 "$BLOCK") || exit 14
+[ "$partition_size" -ge "$IMAGE_SIZE" ] || {
+  echo "FAIL: recovery partition smaller than image"
+  exit 15
+}
+partition_blocks=$((partition_size / 4096))
+echo "recovery_size=$partition_size blocks=$partition_blocks"
+
+backup=$BACKUPDIR/current-recovery-pre-$VERSION.img
+if [ -e "$backup" ]; then
+  [ -f "$backup.sha256" ] &&
+    (cd "$BACKUPDIR" &&
+      sha256sum -c "$(basename "$backup").sha256") || {
+      echo "FAIL: existing backup cannot be verified"
+      exit 20
+    }
+  echo "verified existing backup"
+else
+  partial=$backup.partial
+  dd if="$BLOCK" of="$partial" bs=4096 count="$partition_blocks" \
+    conv=fsync || exit 21
+  backup_hash=$(sha256sum "$partial" | awk '{print $1}') || exit 22
+  printf '%s  %s\n' "$backup_hash" "$(basename "$backup")" \
+    >"$backup.sha256" || exit 23
+  mv -f "$partial" "$backup" || exit 24
+  sync
+  echo "backup complete sha256=$backup_hash"
+fi
+
+dd if="$IMAGE" of="$BLOCK" bs=4096 count="$IMAGE_BLOCKS" conv=fsync ||
+  exit 30
+sync
+
+readback=$(dd if="$BLOCK" bs=4096 count="$IMAGE_BLOCKS" 2>/dev/null |
+  sha256sum | awk '{print $1}')
+[ "$readback" = "$EXPECTED" ] || {
+  echo "FAIL: recovery readback mismatch: $readback"
+  exit 31
+}
+
+echo "CAMEL_RECOVERY_INSTALLED=1"
+echo "version=$VERSION"
+echo "readback_sha256=$readback"
+date -Is

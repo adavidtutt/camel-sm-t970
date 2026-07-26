@@ -11,5 +11,8 @@ mkdir -p "$out_dir"
   cd "$source_dir"
   zip -9 -r "$output" module.prop sepolicy.rule service.sh
 )
-sha256sum "$output" >"$output.sha256"
+(
+  cd "$out_dir"
+  sha256sum "$(basename "$output")" >"$(basename "$output").sha256"
+)
 echo "Built $output"

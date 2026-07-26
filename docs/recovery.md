@@ -57,3 +57,28 @@ scripts/verify-installed-recovery.sh TABLET_IP:ADB_PORT
 
 The verifier is read-only. Do not enter recovery unless it prints
 `VERIFIED: installed recovery matches CAMEL v3`.
+
+## Embedded one-shot installer for later recoveries
+
+After v3 hardware qualification, package an exact full-partition recovery
+image with:
+
+```sh
+scripts/package-embedded-recovery-installer.sh v5 \
+  camel-recovery.img
+```
+
+Unlike the historical v3 module, the resulting Magisk module embeds the
+recovery image. At its single boot it:
+
+1. disables itself before any block access;
+2. verifies the embedded image size and SHA-256;
+3. refuses to write unless microSD backup/log storage is available;
+4. creates or verifies a complete pre-write recovery backup;
+5. writes only `/dev/block/by-name/recovery`;
+6. hashes the complete partition readback;
+7. records the exact version and result persistently on microSD.
+
+Packaging does not install or flash anything. The module is not used until
+the v3 diagnostic boot, Android return, USB recovery link, and final artifact
+hashes have all passed.

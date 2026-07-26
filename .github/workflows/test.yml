@@ -42,3 +42,5 @@ jobs:
             -out "${CAMEL_SIGNING_KEY%.pem}.pub.pem"
           CAMEL_PUBLIC_KEY="${CAMEL_SIGNING_KEY%.pem}.pub.pem" \
             tests/test-kernel-release.sh
+      - name: Exercise embedded recovery installer packaging
+        run: tests/test-recovery-installer-package.sh
