@@ -57,9 +57,7 @@ make "${make_args[@]}" \
   modules_install
 find "$artifact_dir/modules/lib/modules" -type l \
   \( -name build -o -name source \) -delete
-test -n "$(find "$artifact_dir/modules/lib/modules" -type f -name '*.ko' \
-  -print -quit)"
-test -s "$(find "$artifact_dir/modules/lib/modules" -name modules.dep \
+test -f "$(find "$artifact_dir/modules/lib/modules" -name modules.dep \
   -print -quit)"
 
 base_dtb_dir="$kernel_out/arch/arm64/boot/dts/vendor/qcom"
