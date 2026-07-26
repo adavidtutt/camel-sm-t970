@@ -2,6 +2,15 @@ name: Build CAMEL kernel
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - configs/**
+      - kernel-patches/**
+      - scripts/build-kernel.sh
+      - scripts/configure-kernel.sh
+      - sources.lock
+      - .github/workflows/kernel.yml
 
 jobs:
   kernel:
