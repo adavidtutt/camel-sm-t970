@@ -7,6 +7,7 @@ work_dir=${WORK_DIR:-"$root_dir/build/rootfs"}
 image=${ROOTFS_IMAGE:-"$out_dir/rootfs-a.ext4"}
 size=${ROOTFS_SIZE:-8G}
 release=${DEBIAN_RELEASE:-trixie}
+include_ui=${CAMEL_INCLUDE_UI:-0}
 
 mkdir -p "$out_dir" "$work_dir"
 truncate -s "$size" "$image"
@@ -25,7 +26,8 @@ sudo debootstrap --arch=arm64 --foreign "$release" "$mount_dir" \
 sudo cp /usr/bin/qemu-aarch64-static "$mount_dir/usr/bin/"
 sudo chroot "$mount_dir" /debootstrap/debootstrap --second-stage
 
-sudo chroot "$mount_dir" /bin/bash -eux <<'CHROOT'
+sudo chroot "$mount_dir" /usr/bin/env CAMEL_INCLUDE_UI="$include_ui" \
+  /bin/bash -eux <<'CHROOT'
 export DEBIAN_FRONTEND=noninteractive
 printf '#!/bin/sh\nexit 101\n' >/usr/sbin/policy-rc.d
 chmod 0755 /usr/sbin/policy-rc.d
@@ -33,12 +35,21 @@ apt-get update
 apt-get install -y --no-install-recommends \
   systemd-sysv systemd-resolved openssh-server iproute2 iputils-ping \
   busybox-static ca-certificates curl openssl nftables wireguard-tools \
-  sudo git tmux rsync zstd jq bash-completion \
+  sudo git tmux rsync zstd jq bash-completion rclone fuse3 \
   vim-tiny less kmod procps
+if [ "$CAMEL_INCLUDE_UI" = 1 ]; then
+  apt-get install -y --no-install-recommends \
+    sway foot fuzzel seatd dbus-user-session fonts-dejavu-core
+fi
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 rm -f /usr/sbin/policy-rc.d
 useradd -m -s /bin/bash -u 1000 camel
+if [ "$CAMEL_INCLUDE_UI" = 1 ]; then
+  for group in video render input seat; do
+    getent group "$group" >/dev/null && usermod -aG "$group" camel
+  done
+fi
 passwd -l root
 passwd -l camel
 echo camel-tab >/etc/hostname
@@ -57,13 +68,25 @@ sudo ln -sfn /etc/systemd/system/camel-usb-gadget.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-usb-gadget.service"
 sudo ln -sfn /etc/systemd/system/camel-boot-report.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-boot-report.service"
+sudo ln -sfn /etc/systemd/system/camel-diagnostics.service \
+  "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-diagnostics.service"
 sudo ln -sfn /etc/systemd/system/camel-boot-commit.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-boot-commit.service"
+sudo ln -sfn /etc/systemd/system/camel-drive.service \
+  "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-drive.service"
 sudo ln -sfn /lib/systemd/system/systemd-networkd.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/systemd-networkd.service"
 sudo ln -sfn /lib/systemd/system/systemd-resolved.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/systemd-resolved.service"
 sudo ln -sfn /run/systemd/resolve/stub-resolv.conf "$mount_dir/etc/resolv.conf"
+if [ "$include_ui" = 1 ]; then
+  sudo ln -sfn /etc/systemd/system/camel-ui.service \
+    "$mount_dir/etc/systemd/system/graphical.target.wants/camel-ui.service"
+  if [ -f "$mount_dir/lib/systemd/system/seatd.service" ]; then
+    sudo ln -sfn /lib/systemd/system/seatd.service \
+      "$mount_dir/etc/systemd/system/multi-user.target.wants/seatd.service"
+  fi
+fi
 
 sudo rm -f "$mount_dir/usr/bin/qemu-aarch64-static"
 sudo sync

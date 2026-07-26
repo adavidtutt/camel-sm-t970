@@ -1,7 +1,8 @@
 [Unit]
 Description=CAMEL persistent boot report
-After=network-online.target ssh.service
+After=network-online.target ssh.service camel-diagnostics.service
 Wants=network-online.target
+Requires=camel-diagnostics.service
 
 [Service]
 Type=oneshot

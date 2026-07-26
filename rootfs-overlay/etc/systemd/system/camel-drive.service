@@ -1,0 +1,23 @@
+[Unit]
+Description=CAMEL on-demand Google Drive API mount
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/camel/enable-drive
+ConditionPathExists=/home/camel/.config/rclone/rclone.conf
+
+[Service]
+Type=simple
+User=camel
+Environment=HOME=/home/camel
+ExecStartPre=/usr/bin/mkdir -p /home/camel/Drive
+ExecStart=/usr/bin/rclone mount drive: /home/camel/Drive \
+  --config=/home/camel/.config/rclone/rclone.conf \
+  --vfs-cache-mode=writes \
+  --dir-cache-time=5m \
+  --poll-interval=1m
+ExecStop=/bin/fusermount3 -u /home/camel/Drive
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

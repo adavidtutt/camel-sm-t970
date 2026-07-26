@@ -1,0 +1,40 @@
+#!/bin/sh
+set -u
+
+sd=/mnt/sd/camel-linux
+boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || date +%s)
+out=$sd/logs/boots/$boot_id
+mkdir -p "$out"
+
+date -Is >"$out/collected-at.txt"
+uname -a >"$out/uname.txt"
+cat /proc/cmdline >"$out/cmdline.txt"
+cat /proc/meminfo >"$out/meminfo.txt"
+cat /proc/interrupts >"$out/interrupts.txt" 2>/dev/null || true
+cat /proc/modules >"$out/modules.txt" 2>/dev/null || true
+mount >"$out/mounts.txt"
+ip address >"$out/ip-address.txt" 2>&1 || true
+ip route >"$out/ip-route.txt" 2>&1 || true
+dmesg -T >"$out/dmesg.txt" 2>&1 || dmesg >"$out/dmesg.txt" 2>&1 || true
+journalctl -b --no-pager >"$out/journal.txt" 2>&1 || true
+systemctl --failed --no-pager >"$out/failed-units.txt" 2>&1 || true
+
+if [ -d /sys/fs/pstore ]; then
+  mkdir -p "$out/pstore"
+  cp -a /sys/fs/pstore/. "$out/pstore/" 2>/dev/null || true
+fi
+
+if [ -d /sys/class/power_supply ]; then
+  mkdir -p "$out/power-supply"
+  for supply in /sys/class/power_supply/*; do
+    [ -d "$supply" ] || continue
+    name=$(basename "$supply")
+    for property in "$supply"/*; do
+      [ -f "$property" ] || continue
+      key=$(basename "$property")
+      cat "$property" >"$out/power-supply/$name.$key" 2>/dev/null || true
+    done
+  done
+fi
+
+echo "$boot_id" >"$sd/logs/latest-boot-id"

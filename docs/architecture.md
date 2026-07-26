@@ -42,6 +42,13 @@ units:
 /camel-linux/logs/boot-v3.success
 ```
 
+Every systemd boot also receives an immutable boot-ID directory under
+`/camel-linux/logs/boots/`. It contains dmesg, the journal, failed services,
+mounts, networking, memory, interrupts, modules, power-supply properties,
+and any ramoops/pstore records surviving a prior crash. `latest-boot-id`
+points to the newest directory. Collection is a one-shot service, not a
+resident logger.
+
 ## Storage strategy
 
 Large root images and release artifacts live on microSD. Active source

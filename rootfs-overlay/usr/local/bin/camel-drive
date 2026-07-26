@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+remote=${CAMEL_DRIVE_REMOTE:-drive:}
+mountpoint=${CAMEL_DRIVE_MOUNT:-"$HOME/Drive"}
+config=${CAMEL_RCLONE_CONFIG:-"$HOME/.config/rclone/rclone.conf"}
+command=${1:-}
+[ "$#" -gt 0 ] && shift
+
+case "$command" in
+  configure)
+    exec rclone config --config "$config"
+    ;;
+  list)
+    exec rclone lsf "$remote" --config "$config" "$@"
+    ;;
+  pull)
+    mkdir -p "$mountpoint"
+    exec rclone sync "$remote" "$mountpoint" --config "$config" \
+      --create-empty-src-dirs --track-renames --progress
+    ;;
+  push)
+    mkdir -p "$mountpoint"
+    exec rclone sync "$mountpoint" "$remote" --config "$config" \
+      --create-empty-src-dirs --track-renames --progress
+    ;;
+  mount)
+    mkdir -p "$mountpoint"
+    exec rclone mount "$remote" "$mountpoint" --config "$config" \
+      --vfs-cache-mode writes --dir-cache-time 5m --poll-interval 1m
+    ;;
+  unmount)
+    exec fusermount3 -u "$mountpoint"
+    ;;
+  *)
+    echo "usage: camel-drive {configure|list|pull|push|mount|unmount}" >&2
+    exit 2
+    ;;
+esac

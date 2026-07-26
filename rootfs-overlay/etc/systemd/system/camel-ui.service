@@ -1,0 +1,28 @@
+[Unit]
+Description=CAMEL native Wayland terminal surface
+After=systemd-user-sessions.service seatd.service
+Requires=seatd.service
+Conflicts=getty@tty1.service
+ConditionPathExists=/etc/camel/enable-ui
+
+[Service]
+User=camel
+PAMName=login
+WorkingDirectory=/home/camel
+RuntimeDirectory=camel-ui
+RuntimeDirectoryMode=0700
+Environment=HOME=/home/camel
+Environment=XDG_RUNTIME_DIR=/run/camel-ui
+Environment=WLR_LIBINPUT_NO_DEVICES=1
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+TTYReset=yes
+TTYVHangup=yes
+ExecStart=/usr/bin/sway --unsupported-gpu -c /etc/camel/sway/config
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical.target

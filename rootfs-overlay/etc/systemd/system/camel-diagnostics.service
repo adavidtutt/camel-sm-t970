@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect CAMEL boot, pstore, power, and service diagnostics
+After=local-fs.target systemd-journald.service
+Before=camel-boot-report.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/camel-collect-diagnostics
+
+[Install]
+WantedBy=multi-user.target
