@@ -43,4 +43,12 @@ fi
   grep -qx 'lib/modules/camel-test/kernel/drivers/camel.ko' module-files.txt
 )
 
+merged_root=$test_dir/merged-root
+mkdir -p "$merged_root/usr/lib"
+ln -s usr/lib "$merged_root/lib"
+tar --zstd --keep-directory-symlink -C "$merged_root" -xf \
+  "$release_dir/camel-kernel-modules.tar.zst"
+test -L "$merged_root/lib"
+test -f "$merged_root/usr/lib/modules/camel-test/modules.dep"
+
 echo "Signed kernel release packaging passed"

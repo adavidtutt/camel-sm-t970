@@ -74,7 +74,7 @@ sudo cp -a "$root_dir/rootfs-overlay/." "$mount_dir/"
 if [ -n "$kernel_release_dir" ]; then
   kernel_release_dir=$(realpath "$kernel_release_dir")
   "$root_dir/scripts/verify-kernel-release.sh" "$kernel_release_dir"
-  sudo tar --zstd -C "$mount_dir" -xf \
+  sudo tar --zstd --keep-directory-symlink -C "$mount_dir" -xf \
     "$kernel_release_dir/camel-kernel-modules.tar.zst"
 fi
 if [ "$include_ui" = 1 ]; then
