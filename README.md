@@ -22,7 +22,8 @@ systemd as PID 1.
 
 See [docs/architecture.md](docs/architecture.md),
 [docs/bringup.md](docs/bringup.md), and
-[docs/recovery.md](docs/recovery.md).
+[docs/recovery.md](docs/recovery.md). The complete phased execution plan is
+in [docs/roadmap.md](docs/roadmap.md).
 
 ## Pinned upstreams
 
