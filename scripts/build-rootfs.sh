@@ -21,10 +21,20 @@ cleanup() {
 trap cleanup EXIT
 
 sudo mount -o loop "$image" "$mount_dir"
-sudo debootstrap --arch=arm64 --foreign "$release" "$mount_dir" \
-  https://deb.debian.org/debian
-sudo cp /usr/bin/qemu-aarch64-static "$mount_dir/usr/bin/"
-sudo chroot "$mount_dir" /debootstrap/debootstrap --second-stage
+host_arch=$(dpkg --print-architecture)
+if [ "$host_arch" = arm64 ]; then
+  sudo debootstrap --arch=arm64 "$release" "$mount_dir" \
+    https://deb.debian.org/debian
+else
+  command -v qemu-aarch64-static >/dev/null || {
+    echo "qemu-aarch64-static is required for a non-ARM64 build host" >&2
+    exit 3
+  }
+  sudo debootstrap --arch=arm64 --foreign "$release" "$mount_dir" \
+    https://deb.debian.org/debian
+  sudo cp "$(command -v qemu-aarch64-static)" "$mount_dir/usr/bin/"
+  sudo chroot "$mount_dir" /debootstrap/debootstrap --second-stage
+fi
 
 sudo chroot "$mount_dir" /usr/bin/env CAMEL_INCLUDE_UI="$include_ui" \
   /bin/bash -eux <<'CHROOT'
@@ -80,6 +90,8 @@ sudo ln -sfn /lib/systemd/system/systemd-resolved.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/systemd-resolved.service"
 sudo ln -sfn /run/systemd/resolve/stub-resolv.conf "$mount_dir/etc/resolv.conf"
 if [ "$include_ui" = 1 ]; then
+  sudo chroot "$mount_dir" /usr/bin/sway --validate \
+    -c /etc/camel/sway/config
   sudo ln -sfn /etc/systemd/system/camel-ui.service \
     "$mount_dir/etc/systemd/system/graphical.target.wants/camel-ui.service"
   if [ -f "$mount_dir/lib/systemd/system/seatd.service" ]; then

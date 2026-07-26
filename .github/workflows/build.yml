@@ -15,17 +15,21 @@ on:
 
 jobs:
   rootfs:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 120
+    env:
+      CAMEL_INCLUDE_UI: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debootstrap qemu-user-static e2fsprogs \
+          sudo apt-get install -y debootstrap e2fsprogs \
             cpio lz4 git python3
       - name: Build rootfs
-        run: sudo --preserve-env=GITHUB_WORKSPACE scripts/build-rootfs.sh
+        run: |
+          sudo --preserve-env=GITHUB_WORKSPACE,CAMEL_INCLUDE_UI \
+            scripts/build-rootfs.sh
       - uses: actions/upload-artifact@v4
         with:
           name: camel-rootfs
