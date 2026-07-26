@@ -11,13 +11,15 @@ systemd as PID 1.
 
 ## Current state
 
-- Debian 13 rootfs recovered and filesystem-verified
-- direct SD/loop/ext4/switch-root boot path reconstructed
-- CAMEL v3 diagnostic recovery built and AVB-verified
+- Debian 13 ARM64 rootfs built natively and filesystem-verified in public CI
+- direct SD/loop/ext4/switch-root boot path with signed A/B rollback
+- CAMEL v4 recovery built, AVB-verified, and packaged for Odin
 - persistent initramfs and systemd boot diagnostics
 - USB NCM networking at `172.31.0.1/24`
 - SSH key authentication for the `camel` user
 - stock and CAMEL Odin recovery packages preserved
+- native SM-T970 kernel, tablet DTBs, and revision DTBO table reproducible
+- original Android command launcher, keyboard, and atomic clock preserved
 - first hardware recovery boot pending
 
 See [docs/architecture.md](docs/architecture.md),
@@ -27,8 +29,9 @@ in [docs/updates.md](docs/updates.md), and the native device kernel in
 [docs/kernel.md](docs/kernel.md). The native terminal interface is described
 in [docs/ui.md](docs/ui.md), and the Google-free Drive workflow in
 [docs/drive.md](docs/drive.md). Android reduction is recorded in
-[docs/android-debloat.md](docs/android-debloat.md). The complete phased execution plan is
-in [docs/roadmap.md](docs/roadmap.md).
+[docs/android-debloat.md](docs/android-debloat.md), and the Android fallback
+surface in [docs/android-launcher.md](docs/android-launcher.md). The complete
+phased execution plan is in [docs/roadmap.md](docs/roadmap.md).
 
 ## Pinned upstreams
 
@@ -36,6 +39,8 @@ in [docs/roadmap.md](docs/roadmap.md).
   at `be2e1ed031226cd08d4d0b3e51acdfb71ccbf521`
 - Recovery device tree: `JeyKul/android_device_samsung_gts7xlwifi-twrp`
   at `0de0716a3478b16b0a5ec45c910d6787d61d352c`
+- Android DT table packer: AOSP `platform/system/libufdt`
+  at `131ee2db53ad7d9d4756555567894b01107cb26e`
 
 Exact inputs are recorded in [sources.lock](sources.lock).
 
