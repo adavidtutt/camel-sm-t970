@@ -5,6 +5,7 @@ root_dir=$(cd "$(dirname "$0")/.." && pwd)
 out_dir=${OUT_DIR:-"$root_dir/out"}
 work_dir=${WORK_DIR:-"$root_dir/build/recovery"}
 rootfs_dir=${ROOTFS_DIR:-"$root_dir/build/rootfs-mounted"}
+init_file=${INIT_FILE:-"$root_dir/initramfs/init"}
 device_repo=https://github.com/JeyKul/android_device_samsung_gts7xlwifi-twrp.git
 device_commit=0de0716a3478b16b0a5ec45c910d6787d61d352c
 partition_size=86888448
@@ -28,7 +29,7 @@ mkdir -p "$work_dir/ramdisk/bin" "$work_dir/ramdisk/dev" \
   "$work_dir/ramdisk/mnt/sd" "$work_dir/ramdisk/newroot"
 cp "$rootfs_dir/bin/busybox" "$work_dir/ramdisk/bin/busybox"
 ln -s busybox "$work_dir/ramdisk/bin/sh"
-install -m 0750 "$root_dir/initramfs/init" "$work_dir/ramdisk/init"
+install -m 0750 "$init_file" "$work_dir/ramdisk/init"
 
 (
   cd "$work_dir/ramdisk"

@@ -1,0 +1,11 @@
+[Unit]
+Description=Commit a healthy pending CAMEL A/B slot
+After=camel-boot-report.service camel-usb-gadget.service ssh.service
+Requires=camel-boot-report.service camel-usb-gadget.service ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/camel-commit-boot
+
+[Install]
+WantedBy=multi-user.target

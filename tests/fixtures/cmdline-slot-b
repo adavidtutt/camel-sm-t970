@@ -1,0 +1,1 @@
+console=tty0 rdinit=/init camel.slot=B

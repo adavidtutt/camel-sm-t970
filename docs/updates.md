@@ -46,6 +46,18 @@ The staging command:
 6. atomically renames the verified image;
 7. records a pending slot with three allowed boot attempts.
 
-The v3 diagnostic initramfs does not consume A/B state. Slot selection,
-attempt decrement, success commit, and automatic fallback enter the v4
-initramfs only after the v3 hardware boot gate passes.
+After the pending rootfs reaches systemd, USB gadget setup, SSH, and the
+persistent boot-report service, `camel-boot-commit.service` atomically makes
+that slot active and writes `slot-A.success` or `slot-B.success`.
+
+The v3 diagnostic initramfs does not consume A/B state. The candidate v4
+implementation is preserved as `initramfs/init-ab`. It selects a pending
+slot, decrements its attempt counter before mounting it, validates the whole
+rootfs SHA-256, exposes the chosen slot through `/run/camel-slot`, and falls
+back to the last committed slot after the attempts are exhausted.
+
+Build a v4 candidate only after the v3 hardware gate passes:
+
+```sh
+INIT_FILE=initramfs/init-ab scripts/build-recovery.sh
+```

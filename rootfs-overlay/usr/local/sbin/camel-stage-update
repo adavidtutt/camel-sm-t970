@@ -11,6 +11,7 @@ signature=$2
 image=$3
 public_key=${CAMEL_PUBLIC_KEY:-/usr/share/camel/keys/release-ed25519.pub.pem}
 cmdline_file=${CAMEL_CMDLINE_FILE:-/proc/cmdline}
+slot_file=${CAMEL_SLOT_FILE:-/run/camel-slot}
 sd=${CAMEL_SD_ROOT:-/mnt/sd/camel-linux}
 images=$sd/images
 state_dir=$sd/state
@@ -61,7 +62,11 @@ actual_hash=$(sha256sum "$image" | awk '{print $1}')
   exit 21
 }
 
-active=$(sed -n 's/.*camel\.slot=\([AB]\).*/\1/p' "$cmdline_file")
+if [ -f "$slot_file" ]; then
+  active=$(sed -n '1p' "$slot_file")
+else
+  active=$(sed -n 's/.*camel\.slot=\([AB]\).*/\1/p' "$cmdline_file")
+fi
 case "$active" in
   A) inactive=B ;;
   B) inactive=A ;;
@@ -70,6 +75,12 @@ case "$active" in
     exit 22
     ;;
 esac
+active_image="$images/rootfs-${active}.ext4"
+[ -f "$active_image" ] || {
+  echo "FAIL: active slot image is missing: $active_image" >&2
+  exit 23
+}
+active_hash=$(sha256sum "$active_image" | awk '{print $1}')
 
 mkdir -p "$images" "$state_dir"
 target="$images/rootfs-${inactive}.ext4"
@@ -88,6 +99,7 @@ state_tmp="$state_dir/boot-state.new"
 {
   printf 'format=1\n'
   printf 'active_slot=%s\n' "$active"
+  printf 'active_sha256=%s\n' "$active_hash"
   printf 'pending_slot=%s\n' "$inactive"
   printf 'pending_release=%s\n' "$release"
   printf 'pending_sha256=%s\n' "$expected_hash"

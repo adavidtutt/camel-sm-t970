@@ -1,0 +1,161 @@
+#!/bin/busybox sh
+
+BB=/bin/busybox
+PATH=/bin:/sbin
+export PATH
+
+stage() {
+  echo "CAMEL_STAGE=$1"
+}
+
+fail() {
+  code=$1
+  shift
+  echo "CAMEL_FAIL=$code $*"
+  echo "Rescue shell active. Run 'reboot -f' to return to Android."
+  exec $BB sh
+}
+
+state_field() {
+  key=$1
+  $BB sed -n "s/^${key}=//p" "$state"
+}
+
+valid_slot() {
+  [ "$1" = A ] || [ "$1" = B ]
+}
+
+$BB mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+$BB mount -t proc proc /proc || fail E01 "proc mount failed"
+$BB mount -t sysfs sysfs /sys || fail E02 "sysfs mount failed"
+$BB mount -t tmpfs tmpfs /run || fail E03 "run tmpfs mount failed"
+$BB mkdir -p /mnt/sd /newroot
+$BB mdev -s
+
+exec >/dev/console 2>&1
+stage INIT
+echo "CAMEL Linux v4 A/B initramfs"
+
+sd_device=
+fs_type=
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  $BB mdev -s
+  for device in /dev/mmcblk1p1 /dev/mmcblk0p1 /dev/block/mmcblk1p1 \
+    /dev/block/mmcblk0p1; do
+    [ -b "$device" ] || continue
+    $BB umount /mnt/sd 2>/dev/null || true
+    for candidate in sdfat exfat vfat; do
+      if $BB mount -t "$candidate" -o rw "$device" /mnt/sd 2>/dev/null; then
+        if [ -d /mnt/sd/camel-linux/images ]; then
+          sd_device=$device
+          fs_type=$candidate
+          break 3
+        fi
+        $BB umount /mnt/sd 2>/dev/null || true
+      fi
+    done
+  done
+  $BB sleep 1
+done
+[ -n "$sd_device" ] || fail E10 "CAMEL microSD layout not found"
+
+logdir=/mnt/sd/camel-linux/logs
+statedir=/mnt/sd/camel-linux/state
+state=$statedir/boot-state
+$BB mkdir -p "$logdir" "$statedir"
+exec >>"$logdir/boot-v4.log" 2>&1
+stage SD_READY
+echo "sd_device=$sd_device fs_type=$fs_type"
+
+active=A
+active_hash=
+pending=
+pending_hash=
+tries=0
+
+if [ -f "$state" ]; then
+  candidate=$(state_field active_slot)
+  valid_slot "$candidate" && active=$candidate
+  active_hash=$(state_field active_sha256)
+  pending=$(state_field pending_slot)
+  pending_hash=$(state_field pending_sha256)
+  tries=$(state_field tries_remaining)
+fi
+
+case "$tries" in *[!0-9]*|'') tries=0 ;; esac
+valid_slot "$pending" || pending=
+
+slot=$active
+expected_hash=$active_hash
+if [ -n "$pending" ] && [ "$tries" -gt 0 ]; then
+  slot=$pending
+  expected_hash=$pending_hash
+  tries=$((tries - 1))
+  new=$statedir/boot-state.new
+  {
+    echo format=1
+    echo active_slot="$active"
+    [ -n "$active_hash" ] && echo active_sha256="$active_hash"
+    echo pending_slot="$pending"
+    echo pending_release="$(state_field pending_release)"
+    echo pending_sha256="$pending_hash"
+    echo tries_remaining="$tries"
+  } >"$new"
+  $BB sync
+  $BB mv -f "$new" "$state"
+  $BB sync
+elif [ -n "$pending" ]; then
+  echo "CAMEL_FALLBACK=tries_exhausted pending=$pending active=$active"
+  new=$statedir/boot-state.new
+  {
+    echo format=1
+    echo active_slot="$active"
+    [ -n "$active_hash" ] && echo active_sha256="$active_hash"
+    echo last_failed_slot="$pending"
+    echo tries_remaining=0
+  } >"$new"
+  $BB sync
+  $BB mv -f "$new" "$state"
+  $BB sync
+fi
+
+root_image=/camel-linux/images/rootfs-${slot}.ext4
+[ -f "/mnt/sd$root_image" ] || fail E11 "slot $slot image missing"
+
+case "$expected_hash" in
+  [0-9a-f][0-9a-f]*)
+    [ "${#expected_hash}" -eq 64 ] ||
+      fail E12 "slot $slot expected hash malformed"
+    actual_hash=$($BB sha256sum "/mnt/sd$root_image" | $BB awk '{print $1}')
+    [ "$actual_hash" = "$expected_hash" ] ||
+      fail E13 "slot $slot rootfs hash mismatch"
+    ;;
+  *)
+    fail E14 "slot $slot has no trusted rootfs hash"
+    ;;
+esac
+
+echo "$slot" >/run/camel-slot
+echo "CAMEL_SLOT=$slot root_image=$root_image tries_remaining=$tries"
+
+loop_device=$($BB losetup -f)
+[ -n "$loop_device" ] || fail E20 "no loop device available"
+$BB losetup "$loop_device" "/mnt/sd$root_image" ||
+  fail E21 "loop attach failed"
+stage LOOP_READY
+
+$BB mount -t ext4 -o rw,noatime "$loop_device" /newroot ||
+  fail E30 "ext4 root mount failed"
+stage ROOT_READY
+
+$BB mkdir -p /newroot/dev /newroot/proc /newroot/sys /newroot/run \
+  /newroot/mnt/sd
+$BB mount --move /dev /newroot/dev || fail E40 "move /dev failed"
+$BB mount --move /proc /newroot/proc || fail E41 "move /proc failed"
+$BB mount --move /sys /newroot/sys || fail E42 "move /sys failed"
+$BB mount --move /run /newroot/run || fail E43 "move /run failed"
+$BB mount --move /mnt/sd /newroot/mnt/sd || fail E44 "move SD failed"
+
+stage SWITCH_ROOT
+exec $BB switch_root /newroot /sbin/init
+fail E50 "switch_root returned"
