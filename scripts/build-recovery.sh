@@ -86,7 +86,10 @@ python3 "$avbtool" verify_image --image "$image" || verify_status=$?
 rm -f "$verify_link"
 [ "$verify_status" -eq 0 ] || exit "$verify_status"
 python3 "$avbtool" info_image --image "$image" >"$image.avb.txt"
-sha256sum "$image" >"$image.sha256"
+(
+  cd "$out_dir"
+  sha256sum "$(basename "$image")" >"$(basename "$image").sha256"
+)
 
 lz4 -l -12 -f "$image" "$work_dir/recovery.img.lz4"
 tar -C "$work_dir" -H ustar -cf "$out_dir/AP_CAMEL_RECOVERY.tar" recovery.img.lz4
@@ -95,7 +98,10 @@ cp "$out_dir/AP_CAMEL_RECOVERY.tar" "$out_dir/AP_CAMEL_RECOVERY.tar.md5"
   cd "$out_dir"
   md5sum -t AP_CAMEL_RECOVERY.tar >>AP_CAMEL_RECOVERY.tar.md5
 )
-sha256sum "$out_dir/AP_CAMEL_RECOVERY.tar.md5" \
-  >"$out_dir/AP_CAMEL_RECOVERY.tar.md5.sha256"
+(
+  cd "$out_dir"
+  sha256sum AP_CAMEL_RECOVERY.tar.md5 \
+    >AP_CAMEL_RECOVERY.tar.md5.sha256
+)
 
 echo "Built $image"

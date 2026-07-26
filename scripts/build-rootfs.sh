@@ -111,5 +111,8 @@ sudo sync
 sudo umount "$mount_dir"
 
 e2fsck -fy "$image"
-sha256sum "$image" >"$image.sha256"
+(
+  cd "$(dirname "$image")"
+  sha256sum "$(basename "$image")" >"$(basename "$image").sha256"
+)
 echo "Built $image"

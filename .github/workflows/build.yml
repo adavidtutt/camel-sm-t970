@@ -30,6 +30,7 @@ jobs:
         run: |
           sudo --preserve-env=GITHUB_WORKSPACE,CAMEL_INCLUDE_UI \
             scripts/build-rootfs.sh
+          (cd out && sha256sum -c rootfs-a.ext4.sha256)
       - uses: actions/upload-artifact@v4
         with:
           name: camel-rootfs
@@ -57,7 +58,10 @@ jobs:
           mkdir -p build/rootfs-mounted
           sudo mount -o loop,ro out/rootfs-a.ext4 build/rootfs-mounted
       - name: Build recovery
-        run: sudo --preserve-env=GITHUB_WORKSPACE scripts/build-recovery.sh
+        run: |
+          sudo --preserve-env=GITHUB_WORKSPACE scripts/build-recovery.sh
+          (cd out && sha256sum -c camel-recovery.img.sha256)
+          (cd out && sha256sum -c AP_CAMEL_RECOVERY.tar.md5.sha256)
       - name: Unmount rootfs
         if: always()
         run: sudo umount build/rootfs-mounted || true
