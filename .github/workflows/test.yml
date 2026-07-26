@@ -1,0 +1,33 @@
+name: Test CAMEL control plane
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/create-release-manifest.sh
+      - rootfs-overlay/usr/local/sbin/camel-stage-update
+      - rootfs-overlay/usr/local/sbin/camel-commit-boot
+      - tests/**
+      - .github/workflows/test.yml
+  pull_request:
+    paths:
+      - scripts/create-release-manifest.sh
+      - rootfs-overlay/usr/local/sbin/camel-stage-update
+      - rootfs-overlay/usr/local/sbin/camel-commit-boot
+      - tests/**
+      - .github/workflows/test.yml
+
+jobs:
+  ab-update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: |
+          bash -n scripts/*.sh tests/*.sh
+          sh -n initramfs/init initramfs/init-ab
+          sh -n rootfs-overlay/usr/local/sbin/*
+      - name: Exercise signed A/B lifecycle
+        run: tests/test-ab-update.sh

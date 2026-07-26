@@ -11,6 +11,7 @@ rootfs=$(realpath "$2")
 recovery=$(realpath "$3")
 out_dir=${4:-"$(pwd)/out/release-$release"}
 private_key=${CAMEL_SIGNING_KEY:-"$HOME/.camel-signing/release-ed25519.pem"}
+public_key=${CAMEL_PUBLIC_KEY:-"$(dirname "$0")/../keys/release-ed25519.pub.pem"}
 
 case "$release" in
   *[!A-Za-z0-9._-]*|'')
@@ -51,7 +52,7 @@ recovery_size=$(stat -c %s "$recovery")
 openssl pkeyutl -sign -rawin -inkey "$private_key" \
   -in "$manifest" -out "$signature"
 openssl pkeyutl -verify -rawin -pubin \
-  -inkey "$(dirname "$0")/../keys/release-ed25519.pub.pem" \
+  -inkey "$public_key" \
   -in "$manifest" -sigfile "$signature"
 
 sha256sum "$manifest" "$signature" >"$out_dir/SHA256SUMS"
