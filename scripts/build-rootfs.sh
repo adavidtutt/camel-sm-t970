@@ -27,13 +27,17 @@ sudo chroot "$mount_dir" /debootstrap/debootstrap --second-stage
 
 sudo chroot "$mount_dir" /bin/bash -eux <<'CHROOT'
 export DEBIAN_FRONTEND=noninteractive
+printf '#!/bin/sh\nexit 101\n' >/usr/sbin/policy-rc.d
+chmod 0755 /usr/sbin/policy-rc.d
 apt-get update
 apt-get install -y --no-install-recommends \
   systemd-sysv systemd-resolved openssh-server iproute2 iputils-ping \
   busybox-static ca-certificates curl nftables wireguard-tools \
+  sudo git tmux rsync zstd jq bash-completion \
   vim-tiny less kmod procps
 apt-get clean
 rm -rf /var/lib/apt/lists/*
+rm -f /usr/sbin/policy-rc.d
 useradd -m -s /bin/bash -u 1000 camel
 passwd -l root
 passwd -l camel
@@ -47,6 +51,7 @@ sudo cp -a "$root_dir/rootfs-overlay/." "$mount_dir/"
 sudo install -m 0600 -o 1000 -g 1000 \
   "$root_dir/keys/camel-bringup-ed25519.pub" \
   "$mount_dir/home/camel/.ssh/authorized_keys"
+sudo chmod 0440 "$mount_dir/etc/sudoers.d/camel"
 
 sudo ln -sfn /etc/systemd/system/camel-usb-gadget.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-usb-gadget.service"

@@ -1,0 +1,2 @@
+# Key-only SSH is the authentication boundary during bring-up.
+camel ALL=(ALL:ALL) NOPASSWD: ALL

@@ -7,7 +7,9 @@ on:
     paths:
       - initramfs/**
       - rootfs-overlay/**
-      - scripts/**
+      - scripts/build-rootfs.sh
+      - scripts/build-recovery.sh
+      - scripts/verify-release.sh
       - sources.lock
       - .github/workflows/build.yml
 
