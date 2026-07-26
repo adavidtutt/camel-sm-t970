@@ -78,6 +78,10 @@ sudo chmod 0440 "$mount_dir/etc/sudoers.d/camel"
 sudo mkdir -p \
   "$mount_dir/etc/systemd/system/multi-user.target.wants" \
   "$mount_dir/etc/systemd/system/graphical.target.wants"
+for unit in cron.service apt-daily.timer apt-daily-upgrade.timer \
+  e2scrub_all.timer e2scrub_reap.service; do
+  sudo ln -sfn /dev/null "$mount_dir/etc/systemd/system/$unit"
+done
 sudo ln -sfn /etc/systemd/system/camel-usb-gadget.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-usb-gadget.service"
 sudo ln -sfn /etc/systemd/system/camel-boot-report.service \
@@ -103,10 +107,10 @@ if [ "$include_ui" = 1 ]; then
   test -s "$mount_dir/etc/camel/sway/config"
   sudo ln -sfn /etc/systemd/system/camel-ui.service \
     "$mount_dir/etc/systemd/system/graphical.target.wants/camel-ui.service"
-  if [ -f "$mount_dir/lib/systemd/system/seatd.service" ]; then
-    sudo ln -sfn /lib/systemd/system/seatd.service \
-      "$mount_dir/etc/systemd/system/multi-user.target.wants/seatd.service"
-  fi
+  # The package enables seatd by default. Keep it dormant until camel-ui,
+  # whose Requires=seatd.service edge starts it on demand.
+  sudo rm -f \
+    "$mount_dir/etc/systemd/system/multi-user.target.wants/seatd.service"
 fi
 
 sudo rm -f "$mount_dir/usr/bin/qemu-aarch64-static"

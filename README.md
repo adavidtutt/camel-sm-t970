@@ -29,7 +29,8 @@ in [docs/updates.md](docs/updates.md), and the native device kernel in
 [docs/kernel.md](docs/kernel.md). The native terminal interface is described
 in [docs/ui.md](docs/ui.md), and the Google-free Drive workflow in
 [docs/drive.md](docs/drive.md). Native Wi-Fi recovery is covered in
-[docs/wifi.md](docs/wifi.md). Android reduction is recorded in
+[docs/wifi.md](docs/wifi.md), and the minimal resident service set in
+[docs/services.md](docs/services.md). Android reduction is recorded in
 [docs/android-debloat.md](docs/android-debloat.md), and the Android fallback
 surface in [docs/android-launcher.md](docs/android-launcher.md). The complete
 phased execution plan is in [docs/roadmap.md](docs/roadmap.md).
