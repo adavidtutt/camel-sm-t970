@@ -26,6 +26,13 @@ CAMEL_SIGNING_KEY=/secure/path/release-ed25519.pem \
 
 The command writes the manifest, its detached signature, and `SHA256SUMS`.
 It then verifies its own signature using the repository's public key.
+For another canonical manifest such as a kernel `SHA256SUMS`, use:
+
+```sh
+scripts/sign-manifest.sh SHA256SUMS
+```
+
+That command also verifies the detached signature before returning.
 
 ## Stage an inactive rootfs
 
@@ -46,18 +53,20 @@ The staging command:
 6. atomically renames the verified image;
 7. records a pending slot with three allowed boot attempts.
 
-After the pending rootfs reaches systemd, USB gadget setup, SSH, and the
-persistent boot-report service, `camel-boot-commit.service` atomically makes
-that slot active and writes `slot-A.success` or `slot-B.success`.
+After the pending rootfs reaches systemd, `camel-boot-commit.service` runs a
+separate recovery health gate. SSH, the USB gadget service, and the actual
+`172.31.0.1/24` phone-recovery address must all be live before it atomically
+makes that slot active and writes `slot-A.success` or `slot-B.success`.
 
 The v3 diagnostic initramfs does not consume A/B state. The candidate v4
-implementation is preserved as `initramfs/init-ab`. It selects a pending
+implementation is preserved as `initramfs/init-ab` and is now the default
+for `scripts/build-recovery.sh`. It selects a pending
 slot, decrements its attempt counter before mounting it, validates the whole
 rootfs SHA-256, exposes the chosen slot through `/run/camel-slot`, and falls
 back to the last committed slot after the attempts are exhausted.
 
-Build a v4 candidate only after the v3 hardware gate passes:
+Build the v4 recovery locally with:
 
 ```sh
-INIT_FILE=initramfs/init-ab scripts/build-recovery.sh
+scripts/build-recovery.sh
 ```
