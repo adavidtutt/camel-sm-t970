@@ -50,3 +50,14 @@ for a future Android compatibility container, but the rootfs starts no
 Android runtime or container service by default.
 The manual `Build CAMEL kernel` GitHub workflow performs the same build
 without consuming phone storage or hotspot bandwidth.
+
+After downloading a successful `camel-kernel` Actions artifact, create the
+small, signed release set with:
+
+```sh
+scripts/package-kernel-release.sh path/to/camel-kernel
+```
+
+The result contains `Image.gz`, `dtb`, `dtbo.img`, the versioned module tree
+as a zstd tar archive, a portable `SHA256SUMS`, and its detached Ed25519
+signature. The private release key never enters CI or Git.
