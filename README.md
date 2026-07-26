@@ -13,19 +13,20 @@ systemd as PID 1.
 
 - Debian 13 ARM64 rootfs built natively and filesystem-verified in public CI
 - direct SD/loop/ext4/switch-root boot path with signed A/B rollback
-- CAMEL v4 recovery built, AVB-verified, and packaged for Odin
+- CAMEL v5 native-kernel recovery built, AVB-verified, and packaged for Odin
 - persistent initramfs and systemd boot diagnostics
 - USB NCM networking at `172.31.0.1/24`
 - SSH key authentication for the `camel` user
 - stock and CAMEL Odin recovery packages preserved
-- native SM-T970 kernel, tablet DTBs, and revision DTBO table reproducible
+- signed native SM-T970 kernel, rootfs, recovery, and A/B manifests published
 - original Android command launcher, keyboard, and atomic clock preserved
 - first hardware recovery boot pending
 
 See [docs/architecture.md](docs/architecture.md),
 [docs/bringup.md](docs/bringup.md), and
 [docs/recovery.md](docs/recovery.md). Signed A/B release design is documented
-in [docs/updates.md](docs/updates.md), and the native device kernel in
+in [docs/updates.md](docs/updates.md), published artifacts in
+[docs/releases.md](docs/releases.md), and the native device kernel in
 [docs/kernel.md](docs/kernel.md). The native terminal interface is described
 in [docs/ui.md](docs/ui.md), and the Google-free Drive workflow in
 [docs/drive.md](docs/drive.md). Native Wi-Fi recovery is covered in

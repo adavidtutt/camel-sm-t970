@@ -38,7 +38,7 @@ Android still boots without recovery or a data wipe.
 Exit gate: a phone with no special desktop software can diagnose the tablet
 over USB after every successful kernel boot.
 
-## Phase 3: reproducible kernel — CI bring-up in progress
+## Phase 3: reproducible kernel — software gate complete
 
 - reconstruct the pinned Samsung/Lineage kernel source tree
 - reproduce the recovered recovery kernel before changing its configuration
@@ -50,6 +50,10 @@ over USB after every successful kernel boot.
 
 Exit gate: CI and the phone build path produce the same bootable kernel from
 pinned inputs.
+
+Native kernel v1 is signed and published. Recovery v5 was independently
+unpacked and its kernel, DTB, and DTBO bytes match that release exactly.
+Bootability remains part of the Phase 1 hardware gate.
 
 ## Phase 4: hardware enablement
 
@@ -101,7 +105,7 @@ token restoration without Google services running.
 Exit gate: selected APKs launch deliberately and leave no Android services
 resident after shutdown.
 
-## Phase 8: A/B rootfs and self-recovery — control plane built
+## Phase 8: A/B rootfs and self-recovery — signed v5 artifacts published
 
 - introduce immutable `rootfs-a` and `rootfs-b` images
 - keep mutable data in a separately backed-up filesystem

@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - scripts/create-release-manifest.sh
+      - scripts/fetch-linux-release.sh
+      - scripts/verify-linux-release.sh
       - rootfs-overlay/usr/local/sbin/camel-stage-update
       - rootfs-overlay/usr/local/sbin/camel-commit-boot
       - tests/**
@@ -13,6 +15,8 @@ on:
   pull_request:
     paths:
       - scripts/create-release-manifest.sh
+      - scripts/fetch-linux-release.sh
+      - scripts/verify-linux-release.sh
       - rootfs-overlay/usr/local/sbin/camel-stage-update
       - rootfs-overlay/usr/local/sbin/camel-commit-boot
       - tests/**
