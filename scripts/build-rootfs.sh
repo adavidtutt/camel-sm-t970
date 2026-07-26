@@ -8,6 +8,7 @@ image=${ROOTFS_IMAGE:-"$out_dir/rootfs-a.ext4"}
 size=${ROOTFS_SIZE:-8G}
 release=${DEBIAN_RELEASE:-trixie}
 include_ui=${CAMEL_INCLUDE_UI:-0}
+kernel_release_dir=${KERNEL_RELEASE_DIR:-}
 
 mkdir -p "$out_dir" "$work_dir"
 truncate -s "$size" "$image"
@@ -70,6 +71,12 @@ chown -R camel:camel /home/camel
 CHROOT
 
 sudo cp -a "$root_dir/rootfs-overlay/." "$mount_dir/"
+if [ -n "$kernel_release_dir" ]; then
+  kernel_release_dir=$(realpath "$kernel_release_dir")
+  "$root_dir/scripts/verify-kernel-release.sh" "$kernel_release_dir"
+  sudo tar --zstd -C "$mount_dir" -xf \
+    "$kernel_release_dir/camel-kernel-modules.tar.zst"
+fi
 if [ "$include_ui" = 1 ]; then
   test -x "$mount_dir/usr/bin/fc-cache"
   sudo install -D -m 0644 \

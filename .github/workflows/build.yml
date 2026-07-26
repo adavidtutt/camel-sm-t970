@@ -23,16 +23,21 @@ jobs:
     timeout-minutes: 120
     env:
       CAMEL_INCLUDE_UI: "1"
+      KERNEL_RELEASE_DIR: build/kernel-release
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y debootstrap e2fsprogs \
-            cpio lz4 git python3
+            cpio lz4 git python3 zstd
+      - name: Fetch signed native kernel release
+        run: |
+          tag=$(sed -n 's/^KERNEL_RELEASE_TAG=//p' sources.lock)
+          scripts/fetch-kernel-release.sh "$tag" "$KERNEL_RELEASE_DIR"
       - name: Build rootfs
         run: |
-          sudo --preserve-env=GITHUB_WORKSPACE,CAMEL_INCLUDE_UI \
+          sudo --preserve-env=GITHUB_WORKSPACE,CAMEL_INCLUDE_UI,KERNEL_RELEASE_DIR \
             scripts/build-rootfs.sh
           (cd out && sha256sum -c rootfs-a.ext4.sha256)
       - uses: actions/upload-artifact@v4
@@ -47,6 +52,8 @@ jobs:
     needs: rootfs
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      KERNEL_RELEASE_DIR: build/kernel-release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -56,14 +63,19 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cpio lz4 git python3 openssl
+          sudo apt-get install -y cpio lz4 git python3 openssl zstd
+      - name: Fetch signed native kernel release
+        run: |
+          tag=$(sed -n 's/^KERNEL_RELEASE_TAG=//p' sources.lock)
+          scripts/fetch-kernel-release.sh "$tag" "$KERNEL_RELEASE_DIR"
       - name: Mount rootfs
         run: |
           mkdir -p build/rootfs-mounted
           sudo mount -o loop,ro out/rootfs-a.ext4 build/rootfs-mounted
       - name: Build recovery
         run: |
-          sudo --preserve-env=GITHUB_WORKSPACE scripts/build-recovery.sh
+          sudo --preserve-env=GITHUB_WORKSPACE,KERNEL_RELEASE_DIR \
+            KERNEL_DIR="$KERNEL_RELEASE_DIR" scripts/build-recovery.sh
           (cd out && sha256sum -c camel-recovery.img.sha256)
           (cd out && sha256sum -c AP_CAMEL_RECOVERY.tar.md5.sha256)
       - name: Unmount rootfs

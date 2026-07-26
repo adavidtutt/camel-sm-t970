@@ -9,7 +9,6 @@ on:
       - kernel-patches/**
       - scripts/build-kernel.sh
       - scripts/configure-kernel.sh
-      - sources.lock
       - .github/workflows/kernel.yml
 
 concurrency:

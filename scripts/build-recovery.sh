@@ -6,21 +6,40 @@ out_dir=${OUT_DIR:-"$root_dir/out"}
 work_dir=${WORK_DIR:-"$root_dir/build/recovery"}
 rootfs_dir=${ROOTFS_DIR:-"$root_dir/build/rootfs-mounted"}
 init_file=${INIT_FILE:-"$root_dir/initramfs/init-ab"}
+kernel_dir=${KERNEL_DIR:-}
 device_repo=https://github.com/JeyKul/android_device_samsung_gts7xlwifi-twrp.git
 device_commit=0de0716a3478b16b0a5ec45c910d6787d61d352c
 partition_size=86888448
 
 mkdir -p "$out_dir" "$work_dir"
 
-if [ ! -d "$work_dir/device/.git" ]; then
-  git clone --filter=blob:none "$device_repo" "$work_dir/device"
-fi
-git -C "$work_dir/device" fetch origin "$device_commit"
-git -C "$work_dir/device" checkout --detach "$device_commit"
-
 if [ ! -x "$rootfs_dir/bin/busybox" ]; then
   echo "ROOTFS_DIR must point to a mounted CAMEL rootfs containing busybox" >&2
   exit 2
+fi
+
+if [ -n "$kernel_dir" ]; then
+  kernel_dir=$(realpath "$kernel_dir")
+  "$root_dir/scripts/verify-kernel-release.sh" "$kernel_dir"
+  for file in Image.gz dtb dtbo.img; do
+    [ -s "$kernel_dir/$file" ] || {
+      echo "KERNEL_DIR is missing $file" >&2
+      exit 3
+    }
+  done
+  kernel_image=$kernel_dir/Image.gz
+  kernel_dtb=$kernel_dir/dtb
+  kernel_dtbo=$kernel_dir/dtbo.img
+else
+  if [ ! -d "$work_dir/device/.git" ]; then
+    git clone --filter=blob:none "$device_repo" "$work_dir/device"
+  fi
+  git -C "$work_dir/device" fetch origin "$device_commit"
+  git -C "$work_dir/device" checkout --detach "$device_commit"
+  device=$work_dir/device/prebuilt
+  kernel_image=$device/Image.gz
+  kernel_dtb=$device/dtb
+  kernel_dtbo=$device/dtbo.img
 fi
 
 rm -rf "$work_dir/ramdisk"
@@ -49,14 +68,13 @@ fi
 mkbootimg="$tools_dir/mkbootimg/mkbootimg.py"
 avbtool="$tools_dir/avb/avbtool.py"
 key="$tools_dir/avb/test/data/testkey_rsa4096.pem"
-device="$work_dir/device/prebuilt"
 image="$out_dir/camel-recovery.img"
 
 python3 "$mkbootimg" \
-  --kernel "$device/Image.gz" \
+  --kernel "$kernel_image" \
   --ramdisk "$work_dir/ramdisk.cpio.gz" \
-  --recovery_dtbo "$device/dtbo.img" \
-  --dtb "$device/dtb" \
+  --recovery_dtbo "$kernel_dtbo" \
+  --dtb "$kernel_dtb" \
   --base 0x00000000 \
   --pagesize 4096 \
   --kernel_offset 0x00008000 \

@@ -23,6 +23,15 @@ printf 'kernel/drivers/camel.ko:\n' >"$modules/modules.dep"
 
 "$root_dir/scripts/package-kernel-release.sh" \
   "$source_dir" "$release_dir"
+"$root_dir/scripts/verify-kernel-release.sh" "$release_dir"
+
+cp -a "$release_dir" "$test_dir/tampered-release"
+printf tampered >>"$test_dir/tampered-release/Image.gz"
+if "$root_dir/scripts/verify-kernel-release.sh" \
+  "$test_dir/tampered-release"; then
+  echo "tampered kernel release was incorrectly accepted" >&2
+  exit 20
+fi
 
 (
   cd "$release_dir"

@@ -39,5 +39,7 @@ tar --zstd -C "$source_dir/modules" -cf \
     >SHA256SUMS
 )
 "$root_dir/scripts/sign-manifest.sh" "$out_dir/SHA256SUMS"
+chmod 0644 "$out_dir/SHA256SUMS" "$out_dir/SHA256SUMS.sig" \
+  "$out_dir/camel-kernel-modules.tar.zst"
 
 echo "Packaged signed kernel release in $out_dir"

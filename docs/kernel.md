@@ -63,3 +63,20 @@ scripts/package-kernel-release.sh path/to/camel-kernel
 The result contains `Image.gz`, `dtb`, `dtbo.img`, the versioned module tree
 as a zstd tar archive, a portable `SHA256SUMS`, and its detached Ed25519
 signature. The private release key never enters CI or Git.
+
+Build a recovery with that native kernel set by passing its verified
+directory explicitly:
+
+```sh
+KERNEL_DIR=path/to/verified-kernel scripts/build-recovery.sh
+```
+
+Without `KERNEL_DIR`, the script deliberately retains the pinned diagnostic
+prebuilt as a bootstrap fallback.
+
+Normal public CI fetches the tag pinned by `KERNEL_RELEASE_TAG` in
+`sources.lock`, verifies the release manifest's Ed25519 signature and every
+SHA-256, rejects unsafe module archive paths, installs its versioned module
+metadata into the rootfs, and builds recovery with the matching `Image.gz`,
+`dtb`, and `dtbo.img`. `scripts/fetch-kernel-release.sh` provides the same
+verified flow on the phone.
