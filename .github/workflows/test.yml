@@ -8,6 +8,8 @@ on:
       - scripts/create-release-manifest.sh
       - scripts/fetch-linux-release.sh
       - scripts/verify-linux-release.sh
+      - scripts/live-hardware-probe.sh
+      - scripts/run-live-hardware-probe.sh
       - rootfs-overlay/usr/local/sbin/camel-stage-update
       - rootfs-overlay/usr/local/sbin/camel-commit-boot
       - tests/**
@@ -17,6 +19,8 @@ on:
       - scripts/create-release-manifest.sh
       - scripts/fetch-linux-release.sh
       - scripts/verify-linux-release.sh
+      - scripts/live-hardware-probe.sh
+      - scripts/run-live-hardware-probe.sh
       - rootfs-overlay/usr/local/sbin/camel-stage-update
       - rootfs-overlay/usr/local/sbin/camel-commit-boot
       - tests/**

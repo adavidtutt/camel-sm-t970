@@ -73,6 +73,18 @@ static fallback address when phone root is available, verifies reachability,
 and opens key-only SSH. The private key must be backed up encrypted, but
 never placed on the tablet as its only copy.
 
+After SSH works, collect the complete read-only hardware snapshot:
+
+```sh
+scripts/run-live-hardware-probe.sh
+```
+
+It writes a timestamped, hashed report beneath
+`/mnt/sd/camel-linux/logs/manual-probes/` and updates
+`latest-manual-probe`. The probe records DRM, input, audio, Wi-Fi, USB,
+power, thermal, memory, services, dmesg, journal, and pstore state without
+enabling the UI or changing hardware configuration.
+
 ## Gate 4: Android return
 
 A normal reboot must return to rooted Android without a wipe, boot loop,
