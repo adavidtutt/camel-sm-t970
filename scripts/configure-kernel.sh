@@ -10,6 +10,11 @@ kernel_out=${KERNEL_OUT:-"$root_dir/build/kernel/out"}
   exit 2
 }
 
+if [ ! -e "$kernel_src/scripts/min-tool-version.sh" ]; then
+  install -m 0755 "$root_dir/kernel-patches/min-tool-version.sh" \
+    "$kernel_src/scripts/min-tool-version.sh"
+fi
+
 base="$kernel_src/arch/arm64/configs/vendor/kona-perf_defconfig"
 common="$kernel_src/arch/arm64/configs/vendor/samsung/kona-sec-common.config"
 device="$kernel_src/arch/arm64/configs/vendor/samsung/gts7xlwifi.config"
@@ -19,7 +24,11 @@ mkdir -p "$kernel_out"
 "$kernel_src/scripts/kconfig/merge_config.sh" -m -r -O "$kernel_out" \
   "$base" "$common" "$device" "$camel"
 
-make -C "$kernel_src" O="$kernel_out" ARCH=arm64 olddefconfig
+make -C "$kernel_src" O="$kernel_out" ARCH=arm64 \
+  CC="${CC:-clang}" LD="${LD:-ld.lld}" \
+  CROSS_COMPILE="${CROSS_COMPILE:-aarch64-linux-gnu-}" \
+  CLANG_TRIPLE="${CLANG_TRIPLE:-aarch64-linux-gnu-}" \
+  olddefconfig
 
 required=(
   CONFIG_SEC_GTS7XL_PROJECT=y

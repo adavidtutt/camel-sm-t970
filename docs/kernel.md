@@ -24,6 +24,12 @@ then refuses the build unless the SM-T970 project, panel, touchscreen,
 Wacom, QCA6390, Linux namespace, storage, and USB recovery settings survive.
 It also explicitly rejects an R8Q configuration.
 
+The pinned tree contains a known internal mismerge: `scripts/as-version.sh`
+calls `scripts/min-tool-version.sh`, but the latter is absent. CAMEL restores
+the missing GPL-2.0 helper from upstream Linux v5.15 before configuration;
+the compatibility file is preserved in `kernel-patches/` rather than hidden
+inside CI.
+
 Build locally with:
 
 ```sh
