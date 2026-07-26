@@ -31,3 +31,5 @@ jobs:
           sh -n rootfs-overlay/usr/local/sbin/*
       - name: Exercise signed A/B lifecycle
         run: tests/test-ab-update.sh
+      - name: Exercise initial SD rootfs staging
+        run: tests/test-first-rootfs.sh

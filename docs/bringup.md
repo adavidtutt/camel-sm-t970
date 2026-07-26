@@ -10,6 +10,16 @@ Each gate must pass before proceeding.
 - rootfs SHA-256 verifies
 - stock recovery Odin package exists on phone and SD
 
+Initialize slot A only after its published hash verifies:
+
+```sh
+scripts/stage-first-rootfs.sh rootfs-a.ext4 SHA256 /storage/3963-3639
+```
+
+The staging command is idempotent for the same image, refuses to overwrite a
+different slot A, hashes the SD copy after writing, and atomically creates the
+initial A/B boot state.
+
 ## Gate 1: initramfs
 
 Expected SD log stages:
@@ -32,7 +42,8 @@ Failure codes:
 
 ## Gate 2: systemd
 
-`boot-v3.success` must exist and `systemd-v3.log` must show the
+`boot-v3.success` must exist during the diagnostic phase. For the A/B image,
+the per-boot report and slot success marker must show the
 multi-user target with no critical failed units.
 
 ## Gate 3: phone recovery link
