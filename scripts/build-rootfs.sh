@@ -90,8 +90,11 @@ sudo ln -sfn /lib/systemd/system/systemd-resolved.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/systemd-resolved.service"
 sudo ln -sfn /run/systemd/resolve/stub-resolv.conf "$mount_dir/etc/resolv.conf"
 if [ "$include_ui" = 1 ]; then
-  sudo chroot "$mount_dir" /usr/bin/sway --validate \
-    -c /etc/camel/sway/config
+  # Sway 1.10 initializes a DRM/seat backend even with --validate, which cannot
+  # succeed in an unprivileged image-build chroot.  Check the packaged inputs
+  # here; the boot report performs the real compositor check on tablet hardware.
+  test -x "$mount_dir/usr/bin/sway"
+  test -s "$mount_dir/etc/camel/sway/config"
   sudo ln -sfn /etc/systemd/system/camel-ui.service \
     "$mount_dir/etc/systemd/system/graphical.target.wants/camel-ui.service"
   if [ -f "$mount_dir/lib/systemd/system/seatd.service" ]; then
