@@ -6,6 +6,7 @@ slot_file=${CAMEL_SLOT_FILE:-/run/camel-slot}
 sd=${CAMEL_SD_ROOT:-/mnt/sd/camel-linux}
 state_dir=$sd/state
 state=$state_dir/boot-state
+health_check=${CAMEL_HEALTH_CHECK:-/usr/local/sbin/camel-health-check}
 
 [ -f "$state" ] || exit 0
 
@@ -26,6 +27,11 @@ case "$slot" in A|B) ;; *) exit 10 ;; esac
 [ "$slot" = "$pending" ] || {
   echo "Refusing to commit slot $slot while pending slot is $pending" >&2
   exit 11
+}
+
+"$health_check" || {
+  echo "Refusing to commit slot $slot: recovery health check failed" >&2
+  exit 15
 }
 
 release=$(field pending_release)

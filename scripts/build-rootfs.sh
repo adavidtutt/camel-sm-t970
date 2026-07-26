@@ -74,6 +74,9 @@ sudo install -m 0600 -o 1000 -g 1000 \
   "$mount_dir/home/camel/.ssh/authorized_keys"
 sudo chmod 0440 "$mount_dir/etc/sudoers.d/camel"
 
+sudo mkdir -p \
+  "$mount_dir/etc/systemd/system/multi-user.target.wants" \
+  "$mount_dir/etc/systemd/system/graphical.target.wants"
 sudo ln -sfn /etc/systemd/system/camel-usb-gadget.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-usb-gadget.service"
 sudo ln -sfn /etc/systemd/system/camel-boot-report.service \

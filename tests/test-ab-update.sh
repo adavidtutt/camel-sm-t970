@@ -25,6 +25,7 @@ common_env=(
   CAMEL_PUBLIC_KEY="$test_dir/keys/public.pem"
   CAMEL_SLOT_FILE="$test_dir/no-slot-file"
   CAMEL_SD_ROOT="$test_dir/sd/camel-linux"
+  CAMEL_HEALTH_CHECK=/bin/true
 )
 
 env "${common_env[@]}" \
@@ -38,6 +39,14 @@ staged=$(sha256sum \
 [ "$staged" = "$expected" ]
 grep -qx pending_slot=B "$test_dir/sd/camel-linux/state/boot-state"
 grep -qx tries_remaining=3 "$test_dir/sd/camel-linux/state/boot-state"
+
+if env "${common_env[@]}" CAMEL_HEALTH_CHECK=/bin/false \
+  CAMEL_CMDLINE_FILE="$root_dir/tests/fixtures/cmdline-slot-b" \
+  "$root_dir/rootfs-overlay/usr/local/sbin/camel-commit-boot"; then
+  echo "Unhealthy pending slot was incorrectly committed" >&2
+  exit 29
+fi
+grep -qx pending_slot=B "$test_dir/sd/camel-linux/state/boot-state"
 
 env "${common_env[@]}" \
   CAMEL_CMDLINE_FILE="$root_dir/tests/fixtures/cmdline-slot-b" \

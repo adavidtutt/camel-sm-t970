@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+# A pending A/B slot is not healthy merely because systemd reached
+# multi-user.target.  Do not commit until the phone recovery path is usable.
+systemctl is-active --quiet ssh.service
+systemctl is-active --quiet camel-usb-gadget.service
+
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  if ip -4 -o address show dev usb0 2>/dev/null |
+      grep -q 'inet 172\.31\.0\.1/24 '; then
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "CAMEL health check failed: USB recovery address is unavailable" >&2
+exit 1
