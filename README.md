@@ -27,7 +27,8 @@ See [docs/architecture.md](docs/architecture.md),
 [docs/recovery.md](docs/recovery.md). Signed A/B release design is documented
 in [docs/updates.md](docs/updates.md), published artifacts in
 [docs/releases.md](docs/releases.md), and the native device kernel in
-[docs/kernel.md](docs/kernel.md). The native terminal interface is described
+[docs/kernel.md](docs/kernel.md). The pre-boot hardware evidence is in
+[docs/hardware-audit.md](docs/hardware-audit.md). The native terminal interface is described
 in [docs/ui.md](docs/ui.md), and the Google-free Drive workflow in
 [docs/drive.md](docs/drive.md). Native Wi-Fi recovery is covered in
 [docs/wifi.md](docs/wifi.md), and the minimal resident service set in
