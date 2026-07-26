@@ -11,6 +11,12 @@ Keep all of these on both the phone and microSD:
 - rooted Android boot rollback
 - CAMEL rootfs A/B images and checksums
 
+The 16 KiB PIT read from this SM-T970 before bootloader work is preserved at
+`recovery/device/SM-T970-before-unlock.pit` with SHA-256
+`11956bb7b00fc3f5e3d1e1aa487a7ddda3cbbe8f81f38405e376c3643d588f6a`.
+It is partition-layout evidence for inspection and reconstruction. CAMEL
+automation never flashes a PIT or enables Odin repartitioning.
+
 ## Recovery isolation
 
 Experimental CAMEL images target only `/dev/block/by-name/recovery`.
