@@ -41,12 +41,13 @@ sudo chroot "$mount_dir" /usr/bin/env CAMEL_INCLUDE_UI="$include_ui" \
 export DEBIAN_FRONTEND=noninteractive
 printf '#!/bin/sh\nexit 101\n' >/usr/sbin/policy-rc.d
 chmod 0755 /usr/sbin/policy-rc.d
+sed -i 's/ main$/ main non-free-firmware/' /etc/apt/sources.list
 apt-get update
 apt-get install -y --no-install-recommends \
   systemd-sysv systemd-resolved openssh-server iproute2 iputils-ping \
   busybox-static ca-certificates curl openssl nftables wireguard-tools \
   sudo git tmux rsync zstd jq bash-completion rclone fuse3 \
-  vim-tiny less kmod procps
+  vim-tiny less kmod procps iwd rfkill firmware-atheros
 if [ "$CAMEL_INCLUDE_UI" = 1 ]; then
   apt-get install -y --no-install-recommends \
     sway foot fuzzel seatd dbus-user-session fonts-dejavu-core
@@ -91,6 +92,8 @@ sudo ln -sfn /lib/systemd/system/systemd-networkd.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/systemd-networkd.service"
 sudo ln -sfn /lib/systemd/system/systemd-resolved.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/systemd-resolved.service"
+sudo ln -sfn /lib/systemd/system/iwd.service \
+  "$mount_dir/etc/systemd/system/multi-user.target.wants/iwd.service"
 sudo ln -sfn /run/systemd/resolve/stub-resolv.conf "$mount_dir/etc/resolv.conf"
 if [ "$include_ui" = 1 ]; then
   # Sway 1.10 initializes a DRM/seat backend even with --validate, which cannot
