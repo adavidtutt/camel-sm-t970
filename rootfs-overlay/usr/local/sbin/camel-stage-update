@@ -1,0 +1,100 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 3 ]; then
+  echo "usage: camel-stage-update MANIFEST SIGNATURE ROOTFS_IMAGE" >&2
+  exit 2
+fi
+
+manifest=$1
+signature=$2
+image=$3
+public_key=${CAMEL_PUBLIC_KEY:-/usr/share/camel/keys/release-ed25519.pub.pem}
+cmdline_file=${CAMEL_CMDLINE_FILE:-/proc/cmdline}
+sd=${CAMEL_SD_ROOT:-/mnt/sd/camel-linux}
+images=$sd/images
+state_dir=$sd/state
+
+openssl pkeyutl -verify -rawin -pubin -inkey "$public_key" \
+  -in "$manifest" -sigfile "$signature" >/dev/null || {
+  echo "FAIL: release signature is invalid" >&2
+  exit 10
+}
+
+field() {
+  key=$1
+  value=$(sed -n "s/^${key}=//p" "$manifest")
+  [ "$(printf '%s\n' "$value" | wc -l)" -eq 1 ] || return 1
+  printf '%s' "$value"
+}
+
+[ "$(field format)" = 1 ] || {
+  echo "FAIL: unsupported manifest format" >&2
+  exit 11
+}
+release=$(field release) || exit 12
+expected_size=$(field rootfs_size) || exit 13
+expected_hash=$(field rootfs_sha256) || exit 14
+
+case "$release" in
+  *[!A-Za-z0-9._-]*|'') exit 15 ;;
+esac
+case "$expected_size" in
+  *[!0-9]*|'') exit 16 ;;
+esac
+case "$expected_hash" in
+  *[!0-9a-f]*|'') exit 17 ;;
+esac
+[ "${#expected_hash}" -eq 64 ] || exit 18
+
+[ -f "$image" ] || {
+  echo "FAIL: rootfs image not found" >&2
+  exit 19
+}
+[ "$(stat -c %s "$image")" = "$expected_size" ] || {
+  echo "FAIL: rootfs size mismatch" >&2
+  exit 20
+}
+actual_hash=$(sha256sum "$image" | awk '{print $1}')
+[ "$actual_hash" = "$expected_hash" ] || {
+  echo "FAIL: rootfs hash mismatch" >&2
+  exit 21
+}
+
+active=$(sed -n 's/.*camel\.slot=\([AB]\).*/\1/p' "$cmdline_file")
+case "$active" in
+  A) inactive=B ;;
+  B) inactive=A ;;
+  *)
+    echo "FAIL: active slot is absent from the kernel command line" >&2
+    exit 22
+    ;;
+esac
+
+mkdir -p "$images" "$state_dir"
+target="$images/rootfs-${inactive}.ext4"
+partial="$target.partial"
+
+echo "Staging CAMEL $release into inactive slot $inactive"
+dd if="$image" of="$partial" bs=4M conv=fsync status=progress
+[ "$(sha256sum "$partial" | awk '{print $1}')" = "$expected_hash" ] || {
+  echo "FAIL: staged rootfs read-back mismatch" >&2
+  exit 30
+}
+mv -f "$partial" "$target"
+sync
+
+state_tmp="$state_dir/boot-state.new"
+{
+  printf 'format=1\n'
+  printf 'active_slot=%s\n' "$active"
+  printf 'pending_slot=%s\n' "$inactive"
+  printf 'pending_release=%s\n' "$release"
+  printf 'pending_sha256=%s\n' "$expected_hash"
+  printf 'tries_remaining=3\n'
+} >"$state_tmp"
+sync "$state_tmp"
+mv -f "$state_tmp" "$state_dir/boot-state"
+sync
+
+echo "STAGED: slot $inactive will be tried on the next CAMEL boot"
