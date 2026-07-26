@@ -9,8 +9,11 @@ truncate -s 86888448 "$test_dir/recovery.img"
 expected=$(sha256sum "$test_dir/recovery.img" | awk '{print $1}')
 output=$test_dir/installer.zip
 
-"$root_dir/scripts/package-embedded-recovery-installer.sh" \
-  test-v5 "$test_dir/recovery.img" "$output"
+(
+  cd "$test_dir"
+  "$root_dir/scripts/package-embedded-recovery-installer.sh" \
+    test-v5 recovery.img installer.zip
+)
 
 (
   cd "$test_dir"

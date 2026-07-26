@@ -56,6 +56,7 @@ chmod 0755 "$work_dir/service.sh"
 } >"$work_dir/module.prop"
 
 mkdir -p "$(dirname "$output")"
+output=$(cd "$(dirname "$output")" && pwd)/$(basename "$output")
 (
   cd "$work_dir"
   zip -9 -q "$output" module.prop sepolicy.rule service.sh \
