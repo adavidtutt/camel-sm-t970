@@ -22,7 +22,9 @@ Without that marker, `camel-ui.service` starts nothing and adds zero resident
 UI processes. With it present, the service owns tty1, starts Sway through
 seatd, launches a black/green Foot terminal as the first surface, and exposes
 key bindings for the launcher, floating mode, fullscreen, focus, movement,
-and workspaces.
+and workspaces. Libinput remains enabled for the tablet touchscreen, Wacom
+pen, and any attached keyboard; first-boot input failures are allowed to fail
+the optional UI without affecting SSH or USB recovery.
 
 This is the bootstrap interface. The custom touch keyboard, CAMEL status
 surface, atomic/quasar lock clock, and Android-application bridge layer will

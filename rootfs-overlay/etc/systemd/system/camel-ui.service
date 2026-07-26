@@ -13,7 +13,6 @@ RuntimeDirectory=camel-ui
 RuntimeDirectoryMode=0700
 Environment=HOME=/home/camel
 Environment=XDG_RUNTIME_DIR=/run/camel-ui
-Environment=WLR_LIBINPUT_NO_DEVICES=1
 TTYPath=/dev/tty1
 StandardInput=tty
 StandardOutput=journal
