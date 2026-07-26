@@ -19,7 +19,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install build dependencies
         run: |
-          sudo dpkg --add-architecture arm64
           sudo apt-get update
           sudo apt-get install -y debootstrap qemu-user-static e2fsprogs \
             cpio lz4 git python3
