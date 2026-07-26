@@ -38,7 +38,10 @@ scripts/build-kernel.sh
 
 The source checkout and compilation output remain under ignored `build/`;
 hashed images, the concatenated Kona base `dtb`, all selected DTBs/DTBOs,
-modules, and resolved configuration enter `out/kernel`. The build refuses to
+an Android DT table `dtbo.img`, modules, and resolved configuration enter
+`out/kernel`. The DT table packer is pinned in `sources.lock`, uses the
+device's 4096-byte page size, and packages the five Wi-Fi European hardware
+revisions in order. The build refuses to
 publish unless all five SM-T970 Wi-Fi European hardware-revision overlays
 (`r02` through `r06`) exist.
 The manual `Build CAMEL kernel` GitHub workflow performs the same build

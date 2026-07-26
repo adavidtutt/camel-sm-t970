@@ -1,5 +1,7 @@
 KERNEL_REPOSITORY=https://github.com/LineageOS/android_kernel_samsung_sm8250.git
 KERNEL_COMMIT=be2e1ed031226cd08d4d0b3e51acdfb71ccbf521
+LIBUFDT_REPOSITORY=https://android.googlesource.com/platform/system/libufdt
+LIBUFDT_COMMIT=131ee2db53ad7d9d4756555567894b01107cb26e
 RECOVERY_DEVICE_REPOSITORY=https://github.com/JeyKul/android_device_samsung_gts7xlwifi-twrp.git
 RECOVERY_DEVICE_COMMIT=0de0716a3478b16b0a5ec45c910d6787d61d352c
 DEBIAN_RELEASE=trixie

@@ -8,6 +8,8 @@ artifact_dir=${KERNEL_ARTIFACT_DIR:-"$root_dir/out/kernel"}
 jobs=${JOBS:-$(nproc)}
 repository=https://github.com/LineageOS/android_kernel_samsung_sm8250.git
 commit=be2e1ed031226cd08d4d0b3e51acdfb71ccbf521
+libufdt_repository=https://android.googlesource.com/platform/system/libufdt
+libufdt_commit=131ee2db53ad7d9d4756555567894b01107cb26e
 
 if [ ! -d "$kernel_src/.git" ]; then
   mkdir -p "$(dirname "$kernel_src")"
@@ -55,11 +57,26 @@ cat "$base_dtb_dir/kona.dtb" \
   "$base_dtb_dir/kona-v2.dtb" \
   "$base_dtb_dir/kona-v2.1.dtb" >"$artifact_dir/dtb"
 
+overlays=()
 for revision in 02 03 04 05 06; do
   overlay="$kernel_out/arch/arm64/boot/dts/samsung/gts7xl/kona-sec-"\
 "gts7xlwifi-eur-overlay-r${revision}.dtbo"
   test -s "$overlay"
+  overlays+=("$overlay")
 done
+
+libufdt_src="$root_dir/build/kernel/libufdt"
+if [ ! -d "$libufdt_src/.git" ]; then
+  git clone --filter=blob:none --no-checkout "$libufdt_repository" \
+    "$libufdt_src"
+fi
+git -C "$libufdt_src" fetch --depth=1 origin "$libufdt_commit"
+git -C "$libufdt_src" checkout --detach "$libufdt_commit"
+[ "$(git -C "$libufdt_src" rev-parse HEAD)" = "$libufdt_commit" ]
+python3 "$libufdt_src/utils/src/mkdtboimg.py" create \
+  "$artifact_dir/dtbo.img" --page_size=4096 "${overlays[@]}"
+python3 "$libufdt_src/utils/src/mkdtboimg.py" dump \
+  "$artifact_dir/dtbo.img" >"$artifact_dir/dtbo.img.txt"
 
 (
   cd "$artifact_dir"
