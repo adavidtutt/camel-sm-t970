@@ -23,7 +23,8 @@ systemd as PID 1.
 See [docs/architecture.md](docs/architecture.md),
 [docs/bringup.md](docs/bringup.md), and
 [docs/recovery.md](docs/recovery.md). Signed A/B release design is documented
-in [docs/updates.md](docs/updates.md). The complete phased execution plan is
+in [docs/updates.md](docs/updates.md), and the native device kernel in
+[docs/kernel.md](docs/kernel.md). The complete phased execution plan is
 in [docs/roadmap.md](docs/roadmap.md).
 
 ## Pinned upstreams
