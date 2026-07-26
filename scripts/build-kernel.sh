@@ -48,9 +48,19 @@ install -m 0644 "$kernel_out/.config" "$artifact_dir/camel-kernel.config"
   find arch/arm64/boot/dts -type f \
     \( -name '*.dtb' -o -name '*.dtbo' \) -exec \
     cp --parents '{}' "$artifact_dir" ';'
-  find . -type f -name '*.ko' -exec \
-    cp --parents '{}' "$artifact_dir" ';'
 )
+
+rm -rf "$artifact_dir/modules"
+make "${make_args[@]}" \
+  INSTALL_MOD_PATH="$artifact_dir/modules" \
+  INSTALL_MOD_STRIP=1 \
+  modules_install
+find "$artifact_dir/modules/lib/modules" -type l \
+  \( -name build -o -name source \) -delete
+test -n "$(find "$artifact_dir/modules/lib/modules" -type f -name '*.ko' \
+  -print -quit)"
+test -s "$(find "$artifact_dir/modules/lib/modules" -name modules.dep \
+  -print -quit)"
 
 base_dtb_dir="$kernel_out/arch/arm64/boot/dts/vendor/qcom"
 cat "$base_dtb_dir/kona.dtb" \

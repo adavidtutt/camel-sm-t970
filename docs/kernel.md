@@ -38,7 +38,8 @@ scripts/build-kernel.sh
 
 The source checkout and compilation output remain under ignored `build/`;
 hashed images, the concatenated Kona base `dtb`, all selected DTBs/DTBOs,
-an Android DT table `dtbo.img`, modules, and resolved configuration enter
+an Android DT table `dtbo.img`, a stripped and dependency-indexed
+`modules/lib/modules/<release>` tree, and resolved configuration enter
 `out/kernel`. The DT table packer is pinned in `sources.lock`, uses the
 device's 4096-byte page size, and packages the five Wi-Fi European hardware
 revisions in order. The build refuses to
