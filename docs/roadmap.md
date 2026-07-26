@@ -26,7 +26,7 @@ Exit gate: every image has a SHA-256 and at least two independent copies.
 Exit gate: `boot-v3.log`, `systemd-v3.log`, and `boot-v3.success` exist;
 Android still boots without recovery or a data wipe.
 
-## Phase 2: unattended access and diagnostics
+## Phase 2: unattended access and diagnostics — built, hardware gate pending
 
 - bring up ConfigFS USB NCM before relying on Wi-Fi
 - assign the tablet `172.31.0.1/24`
@@ -38,7 +38,7 @@ Android still boots without recovery or a data wipe.
 Exit gate: a phone with no special desktop software can diagnose the tablet
 over USB after every successful kernel boot.
 
-## Phase 3: reproducible kernel
+## Phase 3: reproducible kernel — CI bring-up in progress
 
 - reconstruct the pinned Samsung/Lineage kernel source tree
 - reproduce the recovered recovery kernel before changing its configuration
@@ -101,7 +101,7 @@ token restoration without Google services running.
 Exit gate: selected APKs launch deliberately and leave no Android services
 resident after shutdown.
 
-## Phase 8: A/B rootfs and self-recovery
+## Phase 8: A/B rootfs and self-recovery — control plane built
 
 - introduce immutable `rootfs-a` and `rootfs-b` images
 - keep mutable data in a separately backed-up filesystem
@@ -129,10 +129,15 @@ restored using only the phone, microSD, and published artifacts.
 
 ## Immediate critical path
 
-1. Read and verify `recovery-v3-install.log`.
-2. Perform one isolated CAMEL recovery boot.
-3. Read persistent initramfs/systemd logs from microSD.
-4. Fix only the failed gate, rebuild, and repeat.
-5. Prove normal Android return.
-6. Establish USB NCM SSH.
-7. Begin the reproducible kernel build.
+1. Recover the tablet ADB transport without changing a partition.
+2. Read and verify the v3 installer log and installed recovery hash.
+3. Download the final CI rootfs/recovery set and stage slot A with read-back
+   verification.
+4. Perform one isolated CAMEL recovery boot.
+5. Read persistent initramfs, systemd, pstore, network, and service logs from
+   microSD.
+6. Prove USB NCM SSH, Wi-Fi fallback, and ordinary Android return.
+7. Replace the diagnostic kernel with the signed native kernel release only
+   after that baseline passes.
+8. Exercise a deliberately failed pending-slot boot and prove automatic
+   fallback before enabling the native UI.
