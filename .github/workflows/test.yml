@@ -33,3 +33,12 @@ jobs:
         run: tests/test-ab-update.sh
       - name: Exercise initial SD rootfs staging
         run: tests/test-first-rootfs.sh
+      - name: Exercise signed kernel release packaging
+        env:
+          CAMEL_SIGNING_KEY: ${{ runner.temp }}/release-ed25519.pem
+        run: |
+          openssl genpkey -algorithm ED25519 -out "$CAMEL_SIGNING_KEY"
+          openssl pkey -in "$CAMEL_SIGNING_KEY" -pubout \
+            -out "${CAMEL_SIGNING_KEY%.pem}.pub.pem"
+          CAMEL_PUBLIC_KEY="${CAMEL_SIGNING_KEY%.pem}.pub.pem" \
+            tests/test-kernel-release.sh
