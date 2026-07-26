@@ -70,6 +70,13 @@ chown -R camel:camel /home/camel
 CHROOT
 
 sudo cp -a "$root_dir/rootfs-overlay/." "$mount_dir/"
+if [ "$include_ui" = 1 ]; then
+  test -x "$mount_dir/usr/bin/fc-cache"
+  sudo install -D -m 0644 \
+    "$root_dir/android/launcher/assets/PxPlus_IBM_VGA8.ttf" \
+    "$mount_dir/usr/share/fonts/truetype/camel/PxPlus_IBM_VGA8.ttf"
+  sudo chroot "$mount_dir" /usr/bin/fc-cache -f
+fi
 sudo install -m 0600 -o 1000 -g 1000 \
   "$root_dir/keys/authorized_keys" \
   "$mount_dir/home/camel/.ssh/authorized_keys"

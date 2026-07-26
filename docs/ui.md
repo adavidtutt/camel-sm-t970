@@ -26,6 +26,10 @@ and workspaces. Libinput remains enabled for the tablet touchscreen, Wacom
 pen, and any attached keyboard; first-boot input failures are allowed to fail
 the optional UI without affecting SSH or USB recovery.
 
+The exact `PxPlus IBM VGA8` font used by the Android fallback launcher and
+keyboard is installed into the native rootfs and applied consistently to
+Sway, Foot, and Fuzzel.
+
 This is the bootstrap interface. The custom touch keyboard, CAMEL status
 surface, atomic/quasar lock clock, and Android-application bridge layer will
 be native Wayland clients added after display, touch, suspend, and GPU gates

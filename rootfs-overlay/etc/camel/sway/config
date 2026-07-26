@@ -3,7 +3,7 @@ set $term foot
 set $menu fuzzel
 
 output * bg #000000 solid_color
-font pango:DejaVu Sans Mono 11
+font pango:PxPlus IBM VGA8 13
 gaps inner 0
 gaps outer 0
 default_border pixel 1
