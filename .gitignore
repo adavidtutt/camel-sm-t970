@@ -11,3 +11,5 @@ keys/*-ed25519
 rclone.conf
 keys/*.pem
 !keys/*.pub.pem
+android/launcher/*.keystore
+android/launcher/android.jar
