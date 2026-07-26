@@ -26,7 +26,8 @@ See [docs/architecture.md](docs/architecture.md),
 in [docs/updates.md](docs/updates.md), and the native device kernel in
 [docs/kernel.md](docs/kernel.md). The native terminal interface is described
 in [docs/ui.md](docs/ui.md), and the Google-free Drive workflow in
-[docs/drive.md](docs/drive.md). The complete phased execution plan is
+[docs/drive.md](docs/drive.md). Android reduction is recorded in
+[docs/android-debloat.md](docs/android-debloat.md). The complete phased execution plan is
 in [docs/roadmap.md](docs/roadmap.md).
 
 ## Pinned upstreams
