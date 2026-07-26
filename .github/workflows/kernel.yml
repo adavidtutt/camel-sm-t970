@@ -12,6 +12,10 @@ on:
       - sources.lock
       - .github/workflows/kernel.yml
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   kernel:
     runs-on: ubuntu-22.04
