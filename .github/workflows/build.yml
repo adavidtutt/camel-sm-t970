@@ -1,0 +1,67 @@
+name: Build CAMEL
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - initramfs/**
+      - rootfs-overlay/**
+      - scripts/**
+      - sources.lock
+      - .github/workflows/build.yml
+
+jobs:
+  rootfs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y debootstrap qemu-user-static e2fsprogs \
+            cpio lz4 git python3
+      - name: Build rootfs
+        run: sudo --preserve-env=GITHUB_WORKSPACE scripts/build-rootfs.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: camel-rootfs
+          path: |
+            out/rootfs-a.ext4
+            out/rootfs-a.ext4.sha256
+          compression-level: 1
+
+  recovery:
+    needs: rootfs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: camel-rootfs
+          path: out
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cpio lz4 git python3 openssl
+      - name: Mount rootfs
+        run: |
+          mkdir -p build/rootfs-mounted
+          sudo mount -o loop,ro out/rootfs-a.ext4 build/rootfs-mounted
+      - name: Build recovery
+        run: sudo --preserve-env=GITHUB_WORKSPACE scripts/build-recovery.sh
+      - name: Unmount rootfs
+        if: always()
+        run: sudo umount build/rootfs-mounted || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: camel-recovery
+          path: |
+            out/camel-recovery.img
+            out/camel-recovery.img.sha256
+            out/camel-recovery.img.avb.txt
+            out/AP_CAMEL_RECOVERY.tar.md5
+            out/AP_CAMEL_RECOVERY.tar.md5.sha256

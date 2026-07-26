@@ -1,0 +1,84 @@
+#!/bin/busybox sh
+
+BB=/bin/busybox
+PATH=/bin:/sbin
+export PATH
+
+stage() {
+  echo "CAMEL_STAGE=$1"
+}
+
+fail() {
+  code=$1
+  shift
+  echo "CAMEL_FAIL=$code $*"
+  echo "Rescue shell active. Run 'reboot -f' to return to the normal boot path."
+  exec $BB sh
+}
+
+$BB mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+$BB mount -t proc proc /proc || fail E01 "proc mount failed"
+$BB mount -t sysfs sysfs /sys || fail E02 "sysfs mount failed"
+$BB mount -t tmpfs tmpfs /run || fail E03 "run tmpfs mount failed"
+$BB mkdir -p /mnt/sd /newroot
+$BB mdev -s
+
+exec >/dev/console 2>&1
+stage INIT
+echo "CAMEL Linux v3 diagnostic initramfs"
+
+root_image=/camel-linux/images/rootfs-v2.ext4
+sd_device=
+fs_type=
+
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  $BB mdev -s
+  for device in /dev/mmcblk1p1 /dev/mmcblk0p1 /dev/block/mmcblk1p1 \
+    /dev/block/mmcblk0p1; do
+    [ -b "$device" ] || continue
+    $BB umount /mnt/sd 2>/dev/null || true
+    for candidate in sdfat exfat vfat; do
+      if $BB mount -t "$candidate" -o rw "$device" /mnt/sd 2>/dev/null; then
+        if [ -f "/mnt/sd$root_image" ]; then
+          sd_device=$device
+          fs_type=$candidate
+          break 3
+        fi
+        $BB umount /mnt/sd 2>/dev/null || true
+      fi
+    done
+  done
+  $BB sleep 1
+done
+
+[ -n "$sd_device" ] || fail E10 "SD root image not found: $root_image"
+
+$BB mkdir -p /mnt/sd/camel-linux/logs
+log=/mnt/sd/camel-linux/logs/boot-v3.log
+exec >>"$log" 2>&1
+stage SD_READY
+echo "sd_device=$sd_device fs_type=$fs_type root_image=$root_image"
+echo "cmdline=$($BB cat /proc/cmdline)"
+
+loop_device=$($BB losetup -f)
+[ -n "$loop_device" ] || fail E20 "no loop device available"
+$BB losetup "$loop_device" "/mnt/sd$root_image" ||
+  fail E21 "loop attach failed"
+stage LOOP_READY
+echo "loop_device=$loop_device"
+
+$BB mount -t ext4 -o rw,noatime "$loop_device" /newroot ||
+  fail E30 "ext4 root mount failed"
+stage ROOT_READY
+
+$BB mkdir -p /newroot/dev /newroot/proc /newroot/sys /newroot/run /newroot/mnt/sd
+$BB mount --move /dev /newroot/dev || fail E40 "move /dev failed"
+$BB mount --move /proc /newroot/proc || fail E41 "move /proc failed"
+$BB mount --move /sys /newroot/sys || fail E42 "move /sys failed"
+$BB mount --move /run /newroot/run || fail E43 "move /run failed"
+$BB mount --move /mnt/sd /newroot/mnt/sd || fail E44 "move SD failed"
+
+stage SWITCH_ROOT
+echo "Switching to Debian systemd"
+exec $BB switch_root /newroot /sbin/init
+fail E50 "switch_root returned"

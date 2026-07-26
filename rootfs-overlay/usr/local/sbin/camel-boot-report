@@ -1,0 +1,25 @@
+#!/bin/sh
+set -u
+
+logdir=/mnt/sd/camel-linux/logs
+mkdir -p "$logdir"
+log="$logdir/systemd-v3.log"
+
+{
+  echo "CAMEL_SYSTEMD_READY=1"
+  date -Is
+  uname -a
+  echo "--- cmdline ---"
+  cat /proc/cmdline
+  echo "--- mounts ---"
+  mount
+  echo "--- network ---"
+  ip address
+  ip route
+  echo "--- memory ---"
+  free -h
+  echo "--- failed units ---"
+  systemctl --failed --no-pager
+} >"$log" 2>&1
+
+touch "$logdir/boot-v3.success"

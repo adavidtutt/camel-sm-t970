@@ -1,0 +1,11 @@
+[Unit]
+Description=CAMEL persistent boot report
+After=network-online.target ssh.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/camel-boot-report
+
+[Install]
+WantedBy=multi-user.target

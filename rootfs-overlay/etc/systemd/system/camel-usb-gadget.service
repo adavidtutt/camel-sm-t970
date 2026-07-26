@@ -1,0 +1,12 @@
+[Unit]
+Description=CAMEL USB NCM gadget
+After=systemd-modules-load.service
+Before=systemd-networkd.service ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/camel-usb-gadget
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

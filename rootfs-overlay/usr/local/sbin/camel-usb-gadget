@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+gadget=/sys/kernel/config/usb_gadget/camel
+[ -d /sys/kernel/config ] || exit 0
+mountpoint -q /sys/kernel/config || mount -t configfs configfs /sys/kernel/config
+
+mkdir -p "$gadget"
+printf 0x1d6b >"$gadget/idVendor"
+printf 0x0104 >"$gadget/idProduct"
+mkdir -p "$gadget/strings/0x409" "$gadget/configs/c.1/strings/0x409"
+printf CAMEL-SM-T970 >"$gadget/strings/0x409/serialnumber"
+printf 'CAMEL Linux' >"$gadget/strings/0x409/manufacturer"
+printf 'CAMEL USB Ethernet' >"$gadget/strings/0x409/product"
+printf 'USB network' >"$gadget/configs/c.1/strings/0x409/configuration"
+
+mkdir -p "$gadget/functions/ncm.usb0"
+[ -e "$gadget/configs/c.1/ncm.usb0" ] ||
+  ln -s "$gadget/functions/ncm.usb0" "$gadget/configs/c.1/ncm.usb0"
+
+if [ ! -s "$gadget/UDC" ]; then
+  udc=$(find /sys/class/udc -mindepth 1 -maxdepth 1 -printf '%f\n' \
+    2>/dev/null | head -1)
+  [ -n "$udc" ] && printf '%s' "$udc" >"$gadget/UDC"
+fi
