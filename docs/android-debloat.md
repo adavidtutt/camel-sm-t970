@@ -22,6 +22,10 @@ factory reset. Multiwindow and floating-window functionality are retained by
 not disabling the core framework, WindowManager, or SystemUI components that
 implement them.
 
+The earlier boot-completion guard and exact One UI/Quickstep escape hatches
+are preserved separately in `android/android-rollback`; see
+[android-rollback.md](android-rollback.md).
+
 Before and after each stage:
 
 ```sh

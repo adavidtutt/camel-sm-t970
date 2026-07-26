@@ -1,0 +1,6 @@
+id=transmutation_guard
+name=Transmutation Boot Guard
+version=1.0
+versionCode=1
+author=adavidtutt
+description=Restores a known-good user-0 package set when Android fails to complete boot.
