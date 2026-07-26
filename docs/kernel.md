@@ -44,5 +44,8 @@ device's 4096-byte page size, and packages the five Wi-Fi European hardware
 revisions in order. The build refuses to
 publish unless all five SM-T970 Wi-Fi European hardware-revision overlays
 (`r02` through `r06`) exist.
+Binder, binderfs, ashmem, and the container cgroup controllers are built in
+for a future Android compatibility container, but the rootfs starts no
+Android runtime or container service by default.
 The manual `Build CAMEL kernel` GitHub workflow performs the same build
 without consuming phone storage or hotspot bandwidth.

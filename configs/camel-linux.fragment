@@ -28,6 +28,14 @@ CONFIG_EXT4_FS_SECURITY=y
 CONFIG_OVERLAY_FS=y
 CONFIG_SDFAT_FS=y
 
+# On-demand Android container support; no Android runtime starts by default.
+CONFIG_CGROUP_PIDS=y
+CONFIG_CGROUP_DEVICE=y
+CONFIG_ANDROID_BINDER_IPC=y
+CONFIG_ANDROID_BINDERFS=y
+CONFIG_ANDROID_BINDER_DEVICES="binder,hwbinder,vndbinder"
+CONFIG_ASHMEM=y
+
 # Phone recovery link
 CONFIG_CONFIGFS_FS=y
 CONFIG_USB_GADGET=y
