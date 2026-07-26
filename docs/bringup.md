@@ -44,6 +44,24 @@ ping 172.31.0.1
 ssh -i camel-bringup-ed25519 camel@172.31.0.1
 ```
 
+The primary recovery identity lives on the phone at:
+
+```text
+~/.ssh/camel-phone-recovery-ed25519
+```
+
+Its public fingerprint is:
+
+```text
+SHA256:VUl+IQULsC36hhVLbFe5T+uILIos3yYGco9RQKeEFSg
+```
+
+Only the public key is stored in this repository and the rootfs. From phone
+Termux, `scripts/camel-connect.sh` detects the USB interface, applies the
+static fallback address when phone root is available, verifies reachability,
+and opens key-only SSH. The private key must be backed up encrypted, but
+never placed on the tablet as its only copy.
+
 ## Gate 4: Android return
 
 A normal reboot must return to rooted Android without a wipe, boot loop,

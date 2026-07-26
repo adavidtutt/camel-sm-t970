@@ -60,7 +60,7 @@ CHROOT
 
 sudo cp -a "$root_dir/rootfs-overlay/." "$mount_dir/"
 sudo install -m 0600 -o 1000 -g 1000 \
-  "$root_dir/keys/camel-bringup-ed25519.pub" \
+  "$root_dir/keys/authorized_keys" \
   "$mount_dir/home/camel/.ssh/authorized_keys"
 sudo chmod 0440 "$mount_dir/etc/sudoers.d/camel"
 
