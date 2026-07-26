@@ -43,14 +43,27 @@ install -m 0644 "$kernel_out/arch/arm64/boot/Image.gz" \
 install -m 0644 "$kernel_out/.config" "$artifact_dir/camel-kernel.config"
 (
   cd "$kernel_out"
-  find arch/arm64/boot/dts -type f -name '*.dtb' -exec \
+  find arch/arm64/boot/dts -type f \
+    \( -name '*.dtb' -o -name '*.dtbo' \) -exec \
     cp --parents '{}' "$artifact_dir" ';'
   find . -type f -name '*.ko' -exec \
     cp --parents '{}' "$artifact_dir" ';'
 )
 
+base_dtb_dir="$kernel_out/arch/arm64/boot/dts/vendor/qcom"
+cat "$base_dtb_dir/kona.dtb" \
+  "$base_dtb_dir/kona-v2.dtb" \
+  "$base_dtb_dir/kona-v2.1.dtb" >"$artifact_dir/dtb"
+
+for revision in 02 03 04 05 06; do
+  overlay="$kernel_out/arch/arm64/boot/dts/samsung/gts7xl/kona-sec-"\
+"gts7xlwifi-eur-overlay-r${revision}.dtbo"
+  test -s "$overlay"
+done
+
 (
   cd "$artifact_dir"
-  find . -type f -print0 | sort -z | xargs -0 sha256sum >SHA256SUMS
+  find . -type f ! -name SHA256SUMS -print0 |
+    sort -z | xargs -0 sha256sum >SHA256SUMS
 )
 echo "Built CAMEL kernel artifacts in $artifact_dir"

@@ -37,6 +37,9 @@ scripts/build-kernel.sh
 ```
 
 The source checkout and compilation output remain under ignored `build/`;
-hashed images, DTBs, modules, and resolved configuration enter `out/kernel`.
+hashed images, the concatenated Kona base `dtb`, all selected DTBs/DTBOs,
+modules, and resolved configuration enter `out/kernel`. The build refuses to
+publish unless all five SM-T970 Wi-Fi European hardware-revision overlays
+(`r02` through `r06`) exist.
 The manual `Build CAMEL kernel` GitHub workflow performs the same build
 without consuming phone storage or hotspot bandwidth.
