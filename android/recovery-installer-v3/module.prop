@@ -1,0 +1,6 @@
+id=camel_recovery_v3_installer
+name=CAMEL Recovery v3 One-Shot Installer
+version=3.0
+versionCode=3
+author=Tutt Aerospace / Black Flag Data Labs
+description=Hash-verified backup, install, and readback verification for the recovery partition only

@@ -1,0 +1,1 @@
+allow magisk recovery_block_device blk_file { open read write getattr ioctl }
