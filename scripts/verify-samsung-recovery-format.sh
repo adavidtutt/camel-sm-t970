@@ -62,7 +62,8 @@ do
 done
 
 if ! grep -F -- "camel.sd_uuid=3963-3639" "$work/candidate.mkbootimg" >/dev/null &&
-  ! grep -F -- "camel.mode=ram" "$work/candidate.mkbootimg" >/dev/null
+  ! grep -F -- "camel.mode=ram" "$work/candidate.mkbootimg" >/dev/null &&
+  ! grep -F -- "camel.mode=standalone" "$work/candidate.mkbootimg" >/dev/null
 then
   echo "Samsung recovery compatibility check failed: CAMEL boot mode" >&2
   exit 5

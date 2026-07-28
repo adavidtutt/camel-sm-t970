@@ -37,8 +37,8 @@ else
   echo "Cannot execute ARM64 BusyBox to audit its initramfs applets" >&2
   exit 2
 fi
-for applet in awk cat cttyhack grep ip ln mdev mkdir mkfifo mount mv sed \
-  setsid sha256sum sleep switch_root sync tee telnetd udhcpd umount losetup
+for applet in awk cat cttyhack dd grep ip ln mdev mkdir mkfifo mount mv reboot \
+  sed setsid sha256sum sleep switch_root sync tee telnetd udhcpd umount losetup
 do
   if ! grep -qx "$applet" <<<"$busybox_applets"; then
     echo "CAMEL BusyBox is missing required applet: $applet" >&2
@@ -79,6 +79,21 @@ ln -s busybox "$work_dir/ramdisk/bin/sh"
 install -m 0750 "$init_file" "$work_dir/ramdisk/init"
 install -m 0750 "$root_dir/initramfs/camel-early-recovery" \
   "$work_dir/ramdisk/bin/camel-early-recovery"
+
+if [ -n "${CAMEL_UI_BIN:-}" ]; then
+  : "${CAMEL_LINKER64:?CAMEL_LINKER64 is required with CAMEL_UI_BIN}"
+  : "${CAMEL_LIBC:?CAMEL_LIBC is required with CAMEL_UI_BIN}"
+  : "${CAMEL_LIBDL:?CAMEL_LIBDL is required with CAMEL_UI_BIN}"
+  : "${CAMEL_LIBDRM:?CAMEL_LIBDRM is required with CAMEL_UI_BIN}"
+  mkdir -p "$work_dir/ramdisk/system/bin" "$work_dir/ramdisk/system/lib64"
+  install -m 0750 "$CAMEL_UI_BIN" "$work_dir/ramdisk/bin/camel-ui"
+  install -m 0755 "$CAMEL_LINKER64" \
+    "$work_dir/ramdisk/system/bin/linker64"
+  install -m 0644 "$CAMEL_LIBC" "$work_dir/ramdisk/system/lib64/libc.so"
+  install -m 0644 "$CAMEL_LIBDL" "$work_dir/ramdisk/system/lib64/libdl.so"
+  install -m 0644 "$CAMEL_LIBDRM" \
+    "$work_dir/ramdisk/system/lib64/libdrm.so"
+fi
 
 (
   cd "$work_dir/ramdisk"
