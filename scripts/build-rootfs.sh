@@ -9,6 +9,7 @@ size=${ROOTFS_SIZE:-8G}
 release=${DEBIAN_RELEASE:-trixie}
 include_ui=${CAMEL_INCLUDE_UI:-0}
 kernel_release_dir=${KERNEL_RELEASE_DIR:-}
+camel_source_dir=${CAMEL_SOURCE_DIR:-}
 
 mkdir -p "$out_dir" "$work_dir"
 truncate -s "$size" "$image"
@@ -48,7 +49,8 @@ apt-get install -y --no-install-recommends \
   systemd-sysv systemd-resolved openssh-server iproute2 iputils-ping \
   busybox-static ca-certificates curl openssl nftables wireguard-tools \
   sudo git tmux rsync zstd jq bash-completion rclone fuse3 \
-  vim-tiny less kmod procps iwd rfkill firmware-atheros
+  vim-tiny less kmod procps iwd rfkill firmware-atheros python3-minimal \
+  nodejs npm
 if [ "$CAMEL_INCLUDE_UI" = 1 ]; then
   apt-get install -y --no-install-recommends \
     sway foot fuzzel seatd dbus-user-session fonts-dejavu-core
@@ -71,6 +73,10 @@ chown -R camel:camel /home/camel
 CHROOT
 
 sudo cp -a "$root_dir/rootfs-overlay/." "$mount_dir/"
+if [ -n "$camel_source_dir" ]; then
+  "$root_dir/scripts/install-camel-runtime.sh" \
+    "$camel_source_dir" "$mount_dir"
+fi
 if [ -n "$kernel_release_dir" ]; then
   kernel_release_dir=$(realpath "$kernel_release_dir")
   "$root_dir/scripts/verify-kernel-release.sh" "$kernel_release_dir"
