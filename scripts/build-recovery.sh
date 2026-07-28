@@ -8,6 +8,7 @@ rootfs_dir=${ROOTFS_DIR:-"$root_dir/build/rootfs-mounted"}
 init_file=${INIT_FILE:-"$root_dir/initramfs/init-ab"}
 kernel_dir=${KERNEL_DIR:-}
 stock_kernel_dir=${STOCK_KERNEL_DIR:-}
+uncompressed_kernel=${CAMEL_UNCOMPRESSED_KERNEL:-0}
 device_repo=https://github.com/JeyKul/android_device_samsung_gts7xlwifi-twrp.git
 device_commit=0de0716a3478b16b0a5ec45c910d6787d61d352c
 partition_size=86888448
@@ -80,6 +81,18 @@ else
   kernel_image=$device/Image.gz
   kernel_dtb=$device/dtb
   kernel_dtbo=$device/dtbo.img
+fi
+
+if [ "$uncompressed_kernel" = 1 ]; then
+  gzip -t "$kernel_image"
+  gzip -dc "$kernel_image" >"$work_dir/Image"
+  magic=$(dd if="$work_dir/Image" bs=1 skip=56 count=4 2>/dev/null |
+    od -An -tx1 | tr -d ' \n')
+  [ "$magic" = 41524d64 ] || {
+    echo "decompressed kernel is not an ARM64 Image (magic=$magic)" >&2
+    exit 4
+  }
+  kernel_image=$work_dir/Image
 fi
 
 rm -rf "$work_dir/ramdisk"

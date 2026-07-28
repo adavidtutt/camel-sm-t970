@@ -8,6 +8,7 @@ stock_boot=${STOCK_BOOT_IMAGE:?set STOCK_BOOT_IMAGE to the exact stock boot.img}
 tools_dir=${TOOLS_DIR:-"$root_dir/build/recovery/android-tools"}
 work_dir=${WORK_DIR:-"$root_dir/build/boot-probe"}
 out_dir=${OUT_DIR:-"$root_dir/out/boot-probe"}
+init_file=${INIT_FILE:-"$root_dir/initramfs/init-ab"}
 partition_size=71303168
 
 kernel_dir=$(realpath "$kernel_dir")
@@ -55,8 +56,11 @@ ramdisk="$work_dir/ramdisk"
 mkdir -p "$ramdisk/bin" "$ramdisk/dev" "$ramdisk/proc" "$ramdisk/sys" \
   "$ramdisk/run" "$ramdisk/mnt/sd" "$ramdisk/newroot"
 install -m 0755 "$rootfs_dir/bin/busybox" "$ramdisk/bin/busybox"
-ln -sfn busybox "$ramdisk/bin/sh"
-install -m 0750 "$root_dir/initramfs/init-ab" "$ramdisk/init"
+while IFS= read -r applet; do
+  [ "$applet" = busybox ] && continue
+  ln -sfn busybox "$ramdisk/bin/$applet"
+done < <(qemu-aarch64 "$rootfs_dir/bin/busybox" --list)
+install -m 0750 "$init_file" "$ramdisk/init"
 install -m 0750 "$root_dir/initramfs/camel-early-recovery" \
   "$ramdisk/bin/camel-early-recovery"
 (

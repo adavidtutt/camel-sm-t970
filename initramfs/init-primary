@@ -1,0 +1,55 @@
+#!/bin/busybox sh
+
+BB=/bin/busybox
+PATH=/bin:/sbin
+export PATH
+
+log() {
+  echo "CAMEL: $*"
+  echo "<6>CAMEL: $*" >/dev/kmsg 2>/dev/null || true
+}
+
+$BB mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+$BB mount -t proc proc /proc || exec $BB sh
+$BB mount -t sysfs sysfs /sys || exec $BB sh
+$BB mount -t tmpfs tmpfs /run || exec $BB sh
+$BB mkdir -p /sys/kernel/config /sys/fs/pstore /run /mnt/sd
+$BB mount -t pstore pstore /sys/fs/pstore 2>/dev/null || true
+$BB mdev -s
+
+exec >/dev/console 2>&1
+log "PRIMARY_INIT=1"
+log "Custom kernel reached native CAMEL PID 1"
+
+/bin/camel-early-recovery &
+log "USB_RESCUE_STARTED=1"
+
+# Keep retrying removable storage without making the native rescue shell
+# depend on it. When present, preserve a boot marker outside Android.
+(
+  count=0
+  while [ "$count" -lt 60 ]; do
+    $BB mdev -s
+    for dev in /dev/mmcblk1p1 /dev/mmcblk0p1; do
+      [ -b "$dev" ] || continue
+      for fs in sdfat exfat vfat; do
+        if $BB mount -t "$fs" -o rw "$dev" /mnt/sd 2>/dev/null; then
+          $BB mkdir -p /mnt/sd/camel-linux/logs
+          {
+            echo "CAMEL_PRIMARY_BOOT=1"
+            echo "kernel=$($BB uname -r)"
+            echo "device=$dev fs=$fs"
+          } >>/mnt/sd/camel-linux/logs/primary-boot.log
+          $BB sync
+          exit 0
+        fi
+      done
+    done
+    count=$((count + 1))
+    $BB sleep 1
+  done
+  log "SD_NOT_FOUND_AFTER_60S=1"
+) &
+
+log "RESCUE_SHELL_READY=1"
+exec $BB setsid $BB cttyhack $BB sh

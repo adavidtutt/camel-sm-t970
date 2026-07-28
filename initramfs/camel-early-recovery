@@ -31,13 +31,17 @@ printf 0x0104 >"$gadget/idProduct"
 printf CAMEL-SM-T970-RESCUE >"$gadget/strings/0x409/serialnumber"
 printf 'CAMEL Linux' >"$gadget/strings/0x409/manufacturer"
 printf 'CAMEL early recovery' >"$gadget/strings/0x409/product"
-printf 'NCM rescue network' \
+printf 'NCM network + ACM serial rescue' \
   >"$gadget/configs/c.1/strings/0x409/configuration"
 
 $BB mkdir -p "$gadget/functions/ncm.usb0"
+$BB mkdir -p "$gadget/functions/acm.GS0"
 [ -e "$gadget/configs/c.1/ncm.usb0" ] ||
   $BB ln -s "$gadget/functions/ncm.usb0" \
     "$gadget/configs/c.1/ncm.usb0"
+[ -e "$gadget/configs/c.1/acm.GS0" ] ||
+  $BB ln -s "$gadget/functions/acm.GS0" \
+    "$gadget/configs/c.1/acm.GS0"
 
 if [ ! -s "$gadget/UDC" ]; then
   count=0
@@ -84,4 +88,7 @@ $BB udhcpd /run/udhcpd.conf
 # This shell exists only in the separately selected recovery boot and is
 # reachable only through the directly attached USB network.
 $BB telnetd -p 2323 -l /bin/sh
-report "CAMEL_EARLY_RECOVERY_READY=172.31.0.1:2323"
+if [ -c /dev/ttyGS0 ]; then
+  $BB setsid $BB getty -L 115200 ttyGS0 vt100 &
+fi
+report "CAMEL_EARLY_RECOVERY_READY=172.31.0.1:2323,ttyGS0"
