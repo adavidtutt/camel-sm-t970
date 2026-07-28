@@ -56,11 +56,17 @@ for token in \
   swiotlb=2048 \
   firmware_class.path=/vendor/firmware_mnt/image \
   loop.max_part=7 \
-  rdinit=/init \
-  camel.sd_uuid=3963-3639
+  rdinit=/init
 do
   require_line "$work/candidate.mkbootimg" "$token"
 done
+
+if ! grep -F -- "camel.sd_uuid=3963-3639" "$work/candidate.mkbootimg" >/dev/null &&
+  ! grep -F -- "camel.mode=ram" "$work/candidate.mkbootimg" >/dev/null
+then
+  echo "Samsung recovery compatibility check failed: CAMEL boot mode" >&2
+  exit 5
+fi
 
 require_line "$work/candidate.avb" "Footer version:           1.0"
 require_line "$work/candidate.avb" "Minimum libavb version:   1.0"

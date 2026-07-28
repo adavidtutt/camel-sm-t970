@@ -1,0 +1,35 @@
+#!/bin/busybox sh
+
+BB=/bin/busybox
+PATH=/bin:/sbin
+export PATH
+
+kmsg() {
+  echo "<6>CAMEL: $*" >/dev/kmsg 2>/dev/null || true
+  echo "CAMEL: $*"
+}
+
+rescue_shell() {
+  kmsg "RAM rescue shell on console"
+  while true; do
+    $BB setsid $BB cttyhack $BB sh
+    kmsg "console shell exited; restarting"
+    $BB sleep 1
+  done
+}
+
+$BB mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+$BB mount -t proc proc /proc || exec $BB sh
+$BB mount -t sysfs sysfs /sys || exec $BB sh
+$BB mount -t tmpfs tmpfs /run || exec $BB sh
+$BB mkdir -p /sys/kernel/config /run
+
+exec >/dev/console 2>&1
+kmsg "CAMEL_STAGE=RAM_INIT"
+kmsg "CAMEL Linux RAM rescue; no SD or Android data required"
+
+/bin/camel-early-recovery &
+gadget_pid=$!
+kmsg "CAMEL_GADGET_PID=$gadget_pid"
+
+rescue_shell

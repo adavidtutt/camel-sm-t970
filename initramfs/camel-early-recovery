@@ -5,12 +5,24 @@ gadget=/sys/kernel/config/usb_gadget/camel
 log=/run/camel-early-recovery.log
 
 exec >>"$log" 2>&1
-echo "CAMEL_EARLY_RECOVERY_START=1"
+
+report() {
+  echo "$*"
+  echo "<6>CAMEL: $*" >/dev/kmsg 2>/dev/null || true
+}
+
+die() {
+  report "CAMEL_EARLY_RECOVERY_FAIL=$1"
+  exit "$1"
+}
+
+report "CAMEL_EARLY_RECOVERY_START=1"
 
 $BB mkdir -p /sys/kernel/config /run
 if ! $BB grep -qs ' /sys/kernel/config configfs ' /proc/mounts; then
-  $BB mount -t configfs configfs /sys/kernel/config || exit 10
+  $BB mount -t configfs configfs /sys/kernel/config || die 10
 fi
+report "CAMEL_USB_STAGE=CONFIGFS"
 
 $BB mkdir -p "$gadget/strings/0x409"
 $BB mkdir -p "$gadget/configs/c.1/strings/0x409"
@@ -50,7 +62,8 @@ while [ "$count" -lt 10 ] && [ ! -e /sys/class/net/usb0 ]; do
   count=$((count + 1))
   $BB sleep 1
 done
-[ -e /sys/class/net/usb0 ] || exit 11
+[ -e /sys/class/net/usb0 ] || die 11
+report "CAMEL_USB_STAGE=BOUND"
 
 $BB ip link set usb0 up
 $BB ip address replace 172.31.0.1/24 dev usb0
@@ -71,4 +84,4 @@ $BB udhcpd /run/udhcpd.conf
 # This shell exists only in the separately selected recovery boot and is
 # reachable only through the directly attached USB network.
 $BB telnetd -p 2323 -l /bin/sh
-echo "CAMEL_EARLY_RECOVERY_READY=172.31.0.1:2323"
+report "CAMEL_EARLY_RECOVERY_READY=172.31.0.1:2323"
