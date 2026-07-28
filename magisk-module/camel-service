@@ -1,0 +1,48 @@
+#!/system/bin/sh
+
+MODDIR=/data/adb/modules/camel_linux
+BB=$MODDIR/busybox
+ROOT=/data/adb/camel-root
+SDROOT=/data/adb/camel-sd
+IMAGE=$SDROOT/camel-linux/images/rootfs-A.ext4
+LOG=$SDROOT/camel-linux/logs/magisk-runtime.log
+
+$BB mkdir -p "$ROOT" "$SDROOT"
+if ! $BB grep -qs " $SDROOT " /proc/mounts; then
+  $BB mount -t sdfat -o rw /dev/block/mmcblk0p1 "$SDROOT" || exit 18
+fi
+$BB mkdir -p "${LOG%/*}"
+echo "CAMEL_RUNTIME_START=1" >>"$LOG"
+
+tries=0
+while [ ! -f "$IMAGE" ] && [ "$tries" -lt 60 ]; do
+  tries=$((tries + 1))
+  $BB sleep 1
+done
+[ -f "$IMAGE" ] || {
+  echo "FAIL=ROOTFS_NOT_VISIBLE" >>"$LOG"
+  exit 19
+}
+
+if ! $BB grep -qs " $ROOT " /proc/mounts; then
+  loop=$($BB losetup -f)
+  [ -b "$loop" ] || loop=/dev/block/${loop##*/}
+  $BB losetup "$loop" "$IMAGE" || {
+    echo "FAIL=LOOP_ATTACH" >>"$LOG"
+    exit 20
+  }
+  $BB mount -t ext4 -o rw,noatime "$loop" "$ROOT" || {
+    echo "FAIL=ROOTFS_MOUNT" >>"$LOG"
+    exit 21
+  }
+fi
+
+for dir in dev proc sys run; do
+  $BB mkdir -p "$ROOT/$dir"
+  $BB mount --bind "/$dir" "$ROOT/$dir" 2>/dev/null || true
+done
+
+echo "CAMEL_ROOT_READY=1" >>"$LOG"
+$BB telnetd -b 0.0.0.0:2323 -p 2323 -l "$MODDIR/camel-login"
+echo "CAMEL_SHELL_READY=0.0.0.0:2323" >>"$LOG"
+while :; do $BB sleep 3600; done
