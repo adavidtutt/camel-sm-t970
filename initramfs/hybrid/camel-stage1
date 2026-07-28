@@ -1,0 +1,83 @@
+#!/debug_ramdisk/camel-busybox sh
+
+BB=/debug_ramdisk/camel-busybox
+log() {
+  echo "<6>CAMEL-HYBRID: $*" >/dev/kmsg 2>/dev/null || true
+}
+
+log "TAKEOVER_START=1"
+$BB mkdir -p /camel-root /mnt/camel-sd /config
+$BB mount -t configfs configfs /config 2>/dev/null || true
+
+sd=
+for try in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  for dev in /dev/block/mmcblk1p1 /dev/block/mmcblk0p1; do
+    [ -b "$dev" ] || continue
+    for fs in sdfat exfat vfat; do
+      if $BB mount -t "$fs" -o rw "$dev" /mnt/camel-sd 2>/dev/null; then
+        sd=$dev
+        break 3
+      fi
+    done
+  done
+  $BB sleep 1
+done
+
+[ -n "$sd" ] || {
+  log "FAIL=SD_NOT_FOUND"
+  while :; do $BB sleep 3600; done
+}
+
+image=/mnt/camel-sd/camel-linux/images/rootfs-A.ext4
+[ -f "$image" ] || {
+  log "FAIL=ROOTFS_A_NOT_FOUND"
+  while :; do $BB sleep 3600; done
+}
+
+loop=$($BB losetup -f)
+$BB losetup "$loop" "$image" || {
+  log "FAIL=LOOP_ATTACH"
+  while :; do $BB sleep 3600; done
+}
+$BB mount -t ext4 -o rw,noatime "$loop" /camel-root || {
+  log "FAIL=ROOTFS_MOUNT"
+  while :; do $BB sleep 3600; done
+}
+
+for dir in dev proc sys run; do
+  $BB mkdir -p "/camel-root/$dir"
+  $BB mount --bind "/$dir" "/camel-root/$dir" 2>/dev/null || true
+done
+
+$BB mkdir -p /mnt/camel-sd/camel-linux/logs
+echo "CAMEL_HYBRID_ROOT_READY=1" \
+  >>/mnt/camel-sd/camel-linux/logs/hybrid-boot.log
+$BB sync
+log "ROOT_READY=1"
+
+g=/config/usb_gadget/camel
+$BB mkdir -p "$g/strings/0x409" "$g/configs/c.1/strings/0x409"
+echo 0x1d6b >"$g/idVendor"
+echo 0x0104 >"$g/idProduct"
+echo CAMEL-HYBRID >"$g/strings/0x409/serialnumber"
+echo 'CAMEL Linux' >"$g/strings/0x409/manufacturer"
+echo 'CAMEL native shell' >"$g/strings/0x409/product"
+echo 'NCM native shell' >"$g/configs/c.1/strings/0x409/configuration"
+$BB mkdir -p "$g/functions/ncm.usb0"
+[ -e "$g/configs/c.1/ncm.usb0" ] ||
+  $BB ln -s "$g/functions/ncm.usb0" "$g/configs/c.1/ncm.usb0"
+for path in /sys/class/udc/*; do
+  [ -e "$path" ] || continue
+  echo "${path##*/}" >"$g/UDC"
+  break
+done
+for try in 1 2 3 4 5 6 7 8 9 10; do
+  [ -e /sys/class/net/usb0 ] && break
+  $BB sleep 1
+done
+$BB ip link set usb0 up 2>/dev/null || true
+$BB ip address replace 172.31.0.1/24 dev usb0 2>/dev/null || true
+$BB telnetd -p 2323 -l /debug_ramdisk/camel-login
+log "USB_READY=172.31.0.1:2323"
+
+while :; do $BB sleep 3600; done

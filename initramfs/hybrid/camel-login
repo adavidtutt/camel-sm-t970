@@ -1,0 +1,2 @@
+#!/debug_ramdisk/camel-busybox sh
+exec /debug_ramdisk/camel-busybox chroot /camel-root /bin/bash -l
