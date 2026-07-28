@@ -16,6 +16,9 @@ stock_os_patch_level=2024-08
 stock_cmdline="console=tty0 androidboot.hardware=qcom androidboot.memcg=1 lpm_levels.sleep_disabled=1 video=vfb:640x400,bpp=32,memsize=3072000 msm_rtb.filter=0x237 service_locator.enable=1 androidboot.usbcontroller=a600000.dwc3 swiotlb=2048 printk.devkmsg=on firmware_class.path=/vendor/firmware_mnt/image loop.max_part=7 rdinit=/init camel.sd_uuid=3963-3639"
 
 mkdir -p "$out_dir" "$work_dir"
+out_dir=$(realpath "$out_dir")
+work_dir=$(realpath "$work_dir")
+rootfs_dir=$(realpath "$rootfs_dir")
 
 if [ ! -x "$rootfs_dir/bin/busybox" ]; then
   echo "ROOTFS_DIR must point to a mounted CAMEL rootfs containing busybox" >&2
