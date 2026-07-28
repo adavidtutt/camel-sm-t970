@@ -7,6 +7,7 @@ work_dir=${WORK_DIR:-"$root_dir/build/recovery"}
 rootfs_dir=${ROOTFS_DIR:-"$root_dir/build/rootfs-mounted"}
 init_file=${INIT_FILE:-"$root_dir/initramfs/init-ab"}
 kernel_dir=${KERNEL_DIR:-}
+stock_kernel_dir=${STOCK_KERNEL_DIR:-}
 device_repo=https://github.com/JeyKul/android_device_samsung_gts7xlwifi-twrp.git
 device_commit=0de0716a3478b16b0a5ec45c910d6787d61d352c
 partition_size=86888448
@@ -46,7 +47,18 @@ do
   fi
 done
 
-if [ -n "$kernel_dir" ]; then
+if [ -n "$stock_kernel_dir" ]; then
+  stock_kernel_dir=$(realpath "$stock_kernel_dir")
+  for file in kernel dtb recovery_dtbo; do
+    [ -s "$stock_kernel_dir/$file" ] || {
+      echo "STOCK_KERNEL_DIR is missing $file" >&2
+      exit 3
+    }
+  done
+  kernel_image=$stock_kernel_dir/kernel
+  kernel_dtb=$stock_kernel_dir/dtb
+  kernel_dtbo=$stock_kernel_dir/recovery_dtbo
+elif [ -n "$kernel_dir" ]; then
   kernel_dir=$(realpath "$kernel_dir")
   "$root_dir/scripts/verify-kernel-release.sh" "$kernel_dir"
   for file in Image.gz dtb dtbo.img; do
