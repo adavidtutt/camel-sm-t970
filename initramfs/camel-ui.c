@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
+#include <drm_fourcc.h>
 
 static const uint8_t font[][5] = {
   {0x7e,0x11,0x11,0x11,0x7e},{0x7f,0x49,0x49,0x49,0x36},
@@ -61,6 +62,97 @@ static void kmsg(const char *s) {
   if (fd>=0) { dprintf(fd,"<6>CAMEL: %s\n",s); close(fd); }
 }
 
+static uint32_t property_id(int fd, uint32_t object, uint32_t type,
+                            const char *name) {
+  drmModeObjectProperties *ps=drmModeObjectGetProperties(fd,object,type);
+  uint32_t found=0;
+  if (!ps) return 0;
+  for (uint32_t i=0;i<ps->count_props;i++) {
+    drmModePropertyRes *p=drmModeGetProperty(fd,ps->props[i]);
+    if (p && !strcmp(p->name,name)) found=p->prop_id;
+    drmModeFreeProperty(p);
+    if (found) break;
+  }
+  drmModeFreeObjectProperties(ps);
+  return found;
+}
+
+static uint64_t property_value(int fd, uint32_t object, uint32_t type,
+                               const char *name) {
+  drmModeObjectProperties *ps=drmModeObjectGetProperties(fd,object,type);
+  uint64_t found=0;
+  if (!ps) return 0;
+  for (uint32_t i=0;i<ps->count_props;i++) {
+    drmModePropertyRes *p=drmModeGetProperty(fd,ps->props[i]);
+    if (p && !strcmp(p->name,name)) found=ps->prop_values[i];
+    drmModeFreeProperty(p);
+    if (found) break;
+  }
+  drmModeFreeObjectProperties(ps);
+  return found;
+}
+
+static int add(drmModeAtomicReq *req, uint32_t object, uint32_t property,
+               uint64_t value) {
+  return property && drmModeAtomicAddProperty(req,object,property,value)>=0;
+}
+
+static int atomic_display(int fd, drmModeRes *r, drmModeConnector *c,
+                          uint32_t crtc, uint32_t fb,
+                          drmModeModeInfo *mode) {
+  int crtc_index=-1;
+  for (int i=0;i<r->count_crtcs;i++) if (r->crtcs[i]==crtc) crtc_index=i;
+  if (crtc_index<0) return -1;
+  if (drmSetClientCap(fd,DRM_CLIENT_CAP_UNIVERSAL_PLANES,1)) return -2;
+  if (drmSetClientCap(fd,DRM_CLIENT_CAP_ATOMIC,1)) return -3;
+
+  uint32_t plane=0;
+  drmModePlaneRes *prs=drmModeGetPlaneResources(fd);
+  for (uint32_t i=0;prs && i<prs->count_planes;i++) {
+    drmModePlane *p=drmModeGetPlane(fd,prs->planes[i]);
+    if (p && (p->possible_crtcs&(1u<<crtc_index)) &&
+        property_value(fd,p->plane_id,DRM_MODE_OBJECT_PLANE,"type")==
+          DRM_PLANE_TYPE_PRIMARY) {
+      plane=p->plane_id;
+      if (property_value(fd,p->plane_id,DRM_MODE_OBJECT_PLANE,
+                         "CRTC_ID")==crtc) {
+        drmModeFreePlane(p);
+        break;
+      }
+    }
+    drmModeFreePlane(p);
+  }
+  drmModeFreePlaneResources(prs);
+  if (!plane) return -4;
+
+  uint32_t blob=0;
+  if (drmModeCreatePropertyBlob(fd,mode,sizeof(*mode),&blob)) return -5;
+  drmModeAtomicReq *req=drmModeAtomicAlloc();
+  int ok=req &&
+    add(req,c->connector_id,property_id(fd,c->connector_id,
+        DRM_MODE_OBJECT_CONNECTOR,"CRTC_ID"),crtc) &&
+    add(req,crtc,property_id(fd,crtc,DRM_MODE_OBJECT_CRTC,"MODE_ID"),blob) &&
+    add(req,crtc,property_id(fd,crtc,DRM_MODE_OBJECT_CRTC,"ACTIVE"),1) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"FB_ID"),fb) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"CRTC_ID"),crtc) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"SRC_X"),0) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"SRC_Y"),0) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"SRC_W"),
+        (uint64_t)mode->hdisplay<<16) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"SRC_H"),
+        (uint64_t)mode->vdisplay<<16) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"CRTC_X"),0) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"CRTC_Y"),0) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"CRTC_W"),
+        mode->hdisplay) &&
+    add(req,plane,property_id(fd,plane,DRM_MODE_OBJECT_PLANE,"CRTC_H"),
+        mode->vdisplay);
+  int rc=ok?drmModeAtomicCommit(fd,req,DRM_MODE_ATOMIC_ALLOW_MODESET,NULL):-6;
+  drmModeAtomicFree(req);
+  drmModeDestroyPropertyBlob(fd,blob);
+  return rc;
+}
+
 int main(void) {
   int fd=-1;
   for (int n=0;n<100 && fd<0;n++) {
@@ -72,7 +164,8 @@ int main(void) {
   drmModeConnector *c=NULL;
   for (int i=0;r && i<r->count_connectors;i++) {
     c=drmModeGetConnector(fd,r->connectors[i]);
-    if (c && c->connection==DRM_MODE_CONNECTED && c->count_modes) break;
+    if (c && c->connector_type==DRM_MODE_CONNECTOR_DSI &&
+        c->connection==DRM_MODE_CONNECTED && c->count_modes) break;
     drmModeFreeConnector(c); c=NULL;
   }
   if (!r || !c) { kmsg("UI_FAIL=NO_CONNECTOR"); return 11; }
@@ -85,7 +178,9 @@ int main(void) {
     kmsg("UI_FAIL=CREATE_DUMB"); return 12;
   }
   uint32_t fb=0;
-  if (drmModeAddFB(fd,d.width,d.height,24,32,d.pitch,d.handle,&fb)) {
+  uint32_t handles[4]={d.handle}, pitches[4]={d.pitch}, offsets[4]={0};
+  if (drmModeAddFB2(fd,d.width,d.height,DRM_FORMAT_XRGB8888,
+                    handles,pitches,offsets,&fb,0)) {
     kmsg("UI_FAIL=ADD_FB"); return 13;
   }
   struct drm_mode_map_dumb m={.handle=d.handle};
@@ -105,8 +200,8 @@ int main(void) {
        "VOLUME DOWN BOOT ANDROID",green);
   text(p,d.pitch/4,d.width,d.height,d.width/12,d.height-18*scale,scale/2+1,
        "AUTO BOOT ANDROID IN 60 SECONDS",green);
-  if (drmModeSetCrtc(fd,crtc,fb,0,0,&c->connector_id,1,&mode)) {
-    kmsg("UI_FAIL=SET_CRTC"); return 16;
+  if (atomic_display(fd,r,c,crtc,fb,&mode)) {
+    kmsg("UI_FAIL=ATOMIC_COMMIT"); return 16;
   }
   kmsg("UI_READY=1");
 
