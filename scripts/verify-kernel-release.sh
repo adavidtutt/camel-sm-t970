@@ -32,7 +32,6 @@ for setting in \
   CONFIG_USB_CONFIGFS=y \
   CONFIG_USB_CONFIGFS_NCM=y \
   CONFIG_SECURITY_SELINUX_BOOTPARAM=y \
-  CONFIG_SECURITY_SELINUX_BOOTPARAM_VALUE=1 \
   CONFIG_INET=y
 do
   grep -qx "$setting" "$release_dir/camel-kernel.config" || {
