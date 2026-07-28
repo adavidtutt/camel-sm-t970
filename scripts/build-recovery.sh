@@ -36,8 +36,8 @@ else
   echo "Cannot execute ARM64 BusyBox to audit its initramfs applets" >&2
   exit 2
 fi
-for applet in awk grep ip ln mdev mkdir mount mv sed sha256sum sleep \
-  switch_root sync telnetd udhcpd umount losetup
+for applet in awk grep ip ln mdev mkdir mkfifo mount mv sed sha256sum sleep \
+  switch_root sync tee telnetd udhcpd umount losetup
 do
   if ! grep -qx "$applet" <<<"$busybox_applets"; then
     echo "CAMEL BusyBox is missing required applet: $applet" >&2

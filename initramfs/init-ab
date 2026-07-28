@@ -64,7 +64,10 @@ logdir=/mnt/sd/camel-linux/logs
 statedir=/mnt/sd/camel-linux/state
 state=$statedir/boot-state
 $BB mkdir -p "$logdir" "$statedir"
-exec >>"$logdir/boot-v4.log" 2>&1
+logpipe=/run/camel-boot-log
+$BB mkfifo "$logpipe" || fail E04 "boot log pipe creation failed"
+$BB tee -a "$logdir/boot-v4.log" <"$logpipe" >/dev/console &
+exec >"$logpipe" 2>&1
 stage SD_READY
 echo "sd_device=$sd_device fs_type=$fs_type"
 
