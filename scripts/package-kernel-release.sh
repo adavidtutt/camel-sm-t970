@@ -10,7 +10,7 @@ root_dir=$(cd "$(dirname "$0")/.." && pwd)
 source_dir=$(realpath "$1")
 out_dir=${2:-"$root_dir/out/kernel-release"}
 
-for file in Image.gz dtb dtbo.img SHA256SUMS; do
+for file in Image.gz dtb dtbo.img camel-kernel.config SHA256SUMS; do
   [ -s "$source_dir/$file" ] || {
     echo "kernel artifact is missing $file" >&2
     exit 3
@@ -30,12 +30,15 @@ mkdir -p "$out_dir"
 install -m 0644 "$source_dir/Image.gz" "$out_dir/Image.gz"
 install -m 0644 "$source_dir/dtb" "$out_dir/dtb"
 install -m 0644 "$source_dir/dtbo.img" "$out_dir/dtbo.img"
+install -m 0644 "$source_dir/camel-kernel.config" \
+  "$out_dir/camel-kernel.config"
 tar --zstd -C "$source_dir/modules" -cf \
   "$out_dir/camel-kernel-modules.tar.zst" lib
 
 (
   cd "$out_dir"
-  sha256sum Image.gz dtb dtbo.img camel-kernel-modules.tar.zst \
+  sha256sum Image.gz dtb dtbo.img camel-kernel.config \
+    camel-kernel-modules.tar.zst \
     >SHA256SUMS
 )
 "$root_dir/scripts/sign-manifest.sh" "$out_dir/SHA256SUMS"

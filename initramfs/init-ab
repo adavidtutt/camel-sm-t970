@@ -35,6 +35,7 @@ $BB mdev -s
 exec >/dev/console 2>&1
 stage INIT
 echo "CAMEL Linux v4 A/B initramfs"
+/bin/camel-early-recovery &
 
 sd_device=
 fs_type=
@@ -87,9 +88,11 @@ valid_slot "$pending" || pending=
 
 slot=$active
 expected_hash=$active_hash
+using_pending=0
 if [ -n "$pending" ] && [ "$tries" -gt 0 ]; then
   slot=$pending
   expected_hash=$pending_hash
+  using_pending=1
   tries=$((tries - 1))
   new=$statedir/boot-state.new
   {
@@ -120,20 +123,51 @@ elif [ -n "$pending" ]; then
 fi
 
 root_image=/camel-linux/images/rootfs-${slot}.ext4
-[ -f "/mnt/sd$root_image" ] || fail E11 "slot $slot image missing"
-
+slot_valid=1
+[ -f "/mnt/sd$root_image" ] || slot_valid=0
 case "$expected_hash" in
   [0-9a-f][0-9a-f]*)
-    [ "${#expected_hash}" -eq 64 ] ||
-      fail E12 "slot $slot expected hash malformed"
-    actual_hash=$($BB sha256sum "/mnt/sd$root_image" | $BB awk '{print $1}')
-    [ "$actual_hash" = "$expected_hash" ] ||
-      fail E13 "slot $slot rootfs hash mismatch"
+    [ "${#expected_hash}" -eq 64 ] || slot_valid=0
     ;;
-  *)
-    fail E14 "slot $slot has no trusted rootfs hash"
-    ;;
+  *) slot_valid=0 ;;
 esac
+if [ "$slot_valid" -eq 1 ]; then
+  actual_hash=$($BB sha256sum "/mnt/sd$root_image" | $BB awk '{print $1}')
+  [ "$actual_hash" = "$expected_hash" ] || slot_valid=0
+fi
+
+if [ "$slot_valid" -ne 1 ] && [ "$using_pending" -eq 1 ]; then
+  echo "CAMEL_FALLBACK=pending_invalid pending=$pending active=$active"
+  new=$statedir/boot-state.new
+  {
+    echo format=1
+    echo active_slot="$active"
+    [ -n "$active_hash" ] && echo active_sha256="$active_hash"
+    echo last_failed_slot="$pending"
+    echo tries_remaining=0
+  } >"$new"
+  $BB sync
+  $BB mv -f "$new" "$state"
+  $BB sync
+  slot=$active
+  expected_hash=$active_hash
+  root_image=/camel-linux/images/rootfs-${slot}.ext4
+  using_pending=0
+  [ -f "/mnt/sd$root_image" ] ||
+    fail E11 "active slot $slot image missing"
+  case "$expected_hash" in
+    [0-9a-f][0-9a-f]*)
+      [ "${#expected_hash}" -eq 64 ] ||
+        fail E12 "active slot $slot expected hash malformed"
+      ;;
+    *) fail E14 "active slot $slot has no trusted rootfs hash" ;;
+  esac
+  actual_hash=$($BB sha256sum "/mnt/sd$root_image" | $BB awk '{print $1}')
+  [ "$actual_hash" = "$expected_hash" ] ||
+    fail E13 "active slot $slot rootfs hash mismatch"
+elif [ "$slot_valid" -ne 1 ]; then
+  fail E13 "active slot $slot rootfs is missing or untrusted"
+fi
 
 echo "$slot" >/run/camel-slot
 echo "CAMEL_SLOT=$slot root_image=$root_image tries_remaining=$tries"

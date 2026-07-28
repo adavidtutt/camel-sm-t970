@@ -10,6 +10,10 @@ kernel_dir=${KERNEL_DIR:-}
 device_repo=https://github.com/JeyKul/android_device_samsung_gts7xlwifi-twrp.git
 device_commit=0de0716a3478b16b0a5ec45c910d6787d61d352c
 partition_size=86888448
+stock_board=SRPTD21A007
+stock_os_version=11.0.0
+stock_os_patch_level=2024-08
+stock_cmdline="console=tty0 androidboot.hardware=qcom androidboot.memcg=1 lpm_levels.sleep_disabled=1 video=vfb:640x400,bpp=32,memsize=3072000 msm_rtb.filter=0x237 service_locator.enable=1 androidboot.usbcontroller=a600000.dwc3 swiotlb=2048 printk.devkmsg=on firmware_class.path=/vendor/firmware_mnt/image loop.max_part=7 rdinit=/init camel.sd_uuid=3963-3639"
 
 mkdir -p "$out_dir" "$work_dir"
 
@@ -17,6 +21,26 @@ if [ ! -x "$rootfs_dir/bin/busybox" ]; then
   echo "ROOTFS_DIR must point to a mounted CAMEL rootfs containing busybox" >&2
   exit 2
 fi
+busybox_applets=
+if busybox_applets=$("$rootfs_dir/bin/busybox" --list 2>/dev/null); then
+  :
+elif command -v qemu-aarch64 >/dev/null 2>&1; then
+  busybox_applets=$(qemu-aarch64 "$rootfs_dir/bin/busybox" --list)
+elif command -v qemu-aarch64-static >/dev/null 2>&1; then
+  busybox_applets=$(qemu-aarch64-static \
+    "$rootfs_dir/bin/busybox" --list)
+else
+  echo "Cannot execute ARM64 BusyBox to audit its initramfs applets" >&2
+  exit 2
+fi
+for applet in awk grep ip ln mdev mkdir mount mv sed sha256sum sleep \
+  switch_root sync telnetd udhcpd umount losetup
+do
+  if ! grep -qx "$applet" <<<"$busybox_applets"; then
+    echo "CAMEL BusyBox is missing required applet: $applet" >&2
+    exit 2
+  fi
+done
 
 if [ -n "$kernel_dir" ]; then
   kernel_dir=$(realpath "$kernel_dir")
@@ -49,6 +73,8 @@ mkdir -p "$work_dir/ramdisk/bin" "$work_dir/ramdisk/dev" \
 cp "$rootfs_dir/bin/busybox" "$work_dir/ramdisk/bin/busybox"
 ln -s busybox "$work_dir/ramdisk/bin/sh"
 install -m 0750 "$init_file" "$work_dir/ramdisk/init"
+install -m 0750 "$root_dir/initramfs/camel-early-recovery" \
+  "$work_dir/ramdisk/bin/camel-early-recovery"
 
 (
   cd "$work_dir/ramdisk"
@@ -82,7 +108,10 @@ python3 "$mkbootimg" \
   --tags_offset 0x01e00000 \
   --dtb_offset 0x01f00000 \
   --header_version 2 \
-  --cmdline "console=tty0 androidboot.hardware=qcom androidboot.usbcontroller=a600000.dwc3 loop.max_part=7 rdinit=/init camel.sd_uuid=3963-3639 printk.devkmsg=on" \
+  --os_version "$stock_os_version" \
+  --os_patch_level "$stock_os_patch_level" \
+  --board "$stock_board" \
+  --cmdline "$stock_cmdline" \
   --output "$image"
 
 printf SEANDROIDENFORCE >>"$image"
@@ -92,8 +121,8 @@ python3 "$avbtool" add_hash_footer \
   --partition_name recovery \
   --algorithm SHA256_RSA4096 \
   --key "$key" \
-  --rollback_index 1 \
-  --rollback_index_location 1
+  --rollback_index 0 \
+  --rollback_index_location 0
 
 # avbtool resolves a hash descriptor by its partition name, so provide the
 # canonical recovery.img name beside our descriptive artifact during verify.
@@ -104,6 +133,8 @@ python3 "$avbtool" verify_image --image "$image" || verify_status=$?
 rm -f "$verify_link"
 [ "$verify_status" -eq 0 ] || exit "$verify_status"
 python3 "$avbtool" info_image --image "$image" >"$image.avb.txt"
+"$root_dir/scripts/verify-samsung-recovery-format.sh" \
+  "$image" "${STOCK_RECOVERY_IMAGE:-}"
 (
   cd "$out_dir"
   sha256sum "$(basename "$image")" >"$(basename "$image").sha256"
