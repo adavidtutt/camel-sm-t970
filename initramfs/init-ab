@@ -3,16 +3,24 @@
 BB=/bin/busybox
 PATH=/bin:/sbin
 export PATH
+prelog=
+
+emit() {
+  echo "$*"
+  if [ -n "$prelog" ]; then
+    echo "$*" >>"$prelog"
+  fi
+}
 
 stage() {
-  echo "CAMEL_STAGE=$1"
+  emit "CAMEL_STAGE=$1"
 }
 
 fail() {
   code=$1
   shift
-  echo "CAMEL_FAIL=$code $*"
-  echo "Rescue shell active. Run 'reboot -f' to return to Android."
+  emit "CAMEL_FAIL=$code $*"
+  emit "Rescue shell active. Run 'reboot -f' to return to Android."
   exec $BB sh
 }
 
@@ -33,14 +41,17 @@ $BB mkdir -p /mnt/sd /newroot
 $BB mdev -s
 
 exec >/dev/console 2>&1
+prelog=/run/camel-pre-sd.log
+: >"$prelog"
 stage INIT
-echo "CAMEL Linux v4 A/B initramfs"
+emit "CAMEL Linux v4 A/B initramfs"
 /bin/camel-early-recovery &
 
 sd_device=
 fs_type=
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
   $BB mdev -s
+  emit "CAMEL_WAIT_SD=$_"
   for device in /dev/mmcblk1p1 /dev/mmcblk0p1 /dev/block/mmcblk1p1 \
     /dev/block/mmcblk0p1; do
     [ -b "$device" ] || continue
@@ -64,6 +75,8 @@ logdir=/mnt/sd/camel-linux/logs
 statedir=/mnt/sd/camel-linux/state
 state=$statedir/boot-state
 $BB mkdir -p "$logdir" "$statedir"
+$BB cat "$prelog" >>"$logdir/boot-v4.log"
+prelog=
 logpipe=/run/camel-boot-log
 $BB mkfifo "$logpipe" || fail E04 "boot log pipe creation failed"
 $BB tee -a "$logdir/boot-v4.log" <"$logpipe" >/dev/console &
