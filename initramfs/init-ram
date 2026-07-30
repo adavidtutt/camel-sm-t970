@@ -1,0 +1,48 @@
+#!/bin/busybox sh
+
+BB=/bin/busybox
+PATH=/bin:/sbin
+export PATH
+
+kmsg() {
+  echo "<6>CAMEL: $*" >/dev/kmsg 2>/dev/null || true
+  echo "CAMEL: $*"
+}
+
+$BB mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+$BB mount -t proc proc /proc || exec $BB sh
+$BB mount -t sysfs sysfs /sys || exec $BB sh
+$BB mount -t tmpfs tmpfs /run || exec $BB sh
+$BB mkdir -p /sys/kernel/config /run
+
+exec >/dev/console 2>&1
+kmsg "CAMEL_STAGE=RAM_INIT"
+kmsg "CAMEL Linux RAM rescue; no SD or Android data required"
+
+# Android's recovery request is stored in the first 32 bytes of MISC. Clear
+# only that command field so every CAMEL reboot returns to normal Android.
+misc=
+for candidate in /dev/block/by-name/misc /dev/sda13; do
+  [ -b "$candidate" ] && misc=$candidate && break
+done
+if [ -n "$misc" ]; then
+  $BB dd if=/dev/zero of="$misc" bs=32 count=1 conv=notrunc 2>/dev/null
+  $BB sync
+  kmsg "CAMEL_BCB_CLEARED=$misc"
+else
+  kmsg "CAMEL_WARN=MISC_NOT_FOUND"
+fi
+
+/bin/camel-early-recovery &
+gadget_pid=$!
+kmsg "CAMEL_GADGET_PID=$gadget_pid"
+
+/bin/camel-ui
+ui_status=$?
+kmsg "CAMEL_UI_EXIT=$ui_status"
+kmsg "CAMEL_FAILSAFE=ANDROID_IN_15_SECONDS"
+$BB sleep 15
+$BB reboot -f
+
+# The kernel reboot path should not return. Keep PID 1 alive if it does.
+exec $BB sh

@@ -35,18 +35,14 @@ case "$slot" in A|B) ;; *) exit 10 ;; esac
 }
 
 release=$(field pending_release)
-hash=$(field pending_sha256)
 case "$release" in *[!A-Za-z0-9._-]*|'') exit 12 ;; esac
-case "$hash" in *[!0-9a-f]*|'') exit 13 ;; esac
-[ "${#hash}" -eq 64 ] || exit 14
 
 mkdir -p "$state_dir"
 new="$state_dir/boot-state.new"
 {
-  printf 'format=1\n'
+  printf 'format=2\n'
   printf 'active_slot=%s\n' "$slot"
   printf 'active_release=%s\n' "$release"
-  printf 'active_sha256=%s\n' "$hash"
   printf 'tries_remaining=0\n'
 } >"$new"
 sync "$new"

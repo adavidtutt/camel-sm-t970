@@ -3,26 +3,85 @@
 BB=/bin/busybox
 PATH=/bin:/sbin
 export PATH
+prelog=
 
-stage() {
-  echo "CAMEL_STAGE=$1"
+emit() {
+  echo "$*"
+  [ -n "$prelog" ] && echo "$*" >>"$prelog"
+  echo "<6>CAMEL: $*" >/dev/kmsg 2>/dev/null || true
 }
+
+stage() { emit "CAMEL_STAGE=$1"; }
 
 fail() {
   code=$1
   shift
-  echo "CAMEL_FAIL=$code $*"
-  echo "Rescue shell active. Run 'reboot -f' to return to Android."
-  exec $BB sh
+  emit "CAMEL_FAIL=$code $*"
+  emit "USB rescue: 172.31.0.1:2323; local rescue shell follows."
+  exec $BB setsid $BB cttyhack $BB sh
 }
 
-state_field() {
+field() {
   key=$1
-  $BB sed -n "s/^${key}=//p" "$state"
+  [ -f "$state" ] && $BB sed -n "s/^${key}=//p" "$state"
 }
 
-valid_slot() {
-  [ "$1" = A ] || [ "$1" = B ]
+valid_slot() { [ "$1" = A ] || [ "$1" = B ]; }
+
+write_failed_state() {
+  failed=$1
+  new=$statedir/boot-state.new
+  {
+    echo format=2
+    echo active_slot="$active"
+    echo last_failed_slot="$failed"
+    echo tries_remaining=0
+  } >"$new"
+  $BB sync
+  $BB mv -f "$new" "$state"
+  $BB sync
+}
+
+mount_slot() {
+  candidate=$1
+  image="/mnt/sd/camel-linux/images/rootfs-${candidate}.ext4"
+  [ -f "$image" ] || {
+    emit "CAMEL_SLOT_REJECT=$candidate reason=image_missing"
+    return 1
+  }
+
+  $BB umount /newroot 2>/dev/null || true
+  [ -n "$loop_device" ] &&
+    $BB losetup -d "$loop_device" 2>/dev/null || true
+  loop_device=$($BB losetup -f) || return 1
+  [ -n "$loop_device" ] || return 1
+  $BB losetup "$loop_device" "$image" || return 1
+  $BB mount -t ext4 -o rw,noatime "$loop_device" /newroot || {
+    $BB losetup -d "$loop_device" 2>/dev/null || true
+    loop_device=
+    emit "CAMEL_SLOT_REJECT=$candidate reason=mount_failed"
+    return 1
+  }
+
+  # The release image is verified before installation. Hashing the entire
+  # writable ext4 container here would reject it after its journal changes.
+  [ -x /newroot/sbin/init ] || {
+    emit "CAMEL_SLOT_REJECT=$candidate reason=missing_init"
+    return 1
+  }
+  [ -s /newroot/etc/os-release ] || {
+    emit "CAMEL_SLOT_REJECT=$candidate reason=missing_os_release"
+    return 1
+  }
+  [ -s /newroot/etc/camel/rootfs-release ] || {
+    emit "CAMEL_SLOT_REJECT=$candidate reason=missing_release_marker"
+    return 1
+  }
+  $BB grep -q '^ID=debian$' /newroot/etc/os-release || {
+    emit "CAMEL_SLOT_REJECT=$candidate reason=not_debian"
+    return 1
+  }
+  return 0
 }
 
 $BB mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
@@ -33,13 +92,17 @@ $BB mkdir -p /mnt/sd /newroot
 $BB mdev -s
 
 exec >/dev/console 2>&1
+prelog=/run/camel-pre-sd.log
+: >"$prelog"
 stage INIT
-echo "CAMEL Linux v4 A/B initramfs"
+emit "CAMEL Linux native boot v5"
+/bin/camel-early-recovery &
 
 sd_device=
 fs_type=
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
   $BB mdev -s
+  emit "CAMEL_WAIT_SD=$_"
   for device in /dev/mmcblk1p1 /dev/mmcblk0p1 /dev/block/mmcblk1p1 \
     /dev/block/mmcblk0p1; do
     [ -b "$device" ] || continue
@@ -63,90 +126,51 @@ logdir=/mnt/sd/camel-linux/logs
 statedir=/mnt/sd/camel-linux/state
 state=$statedir/boot-state
 $BB mkdir -p "$logdir" "$statedir"
-exec >>"$logdir/boot-v4.log" 2>&1
+$BB cat "$prelog" >>"$logdir/boot-v5.log"
+prelog=
+exec >>"$logdir/boot-v5.log" 2>&1
 stage SD_READY
-echo "sd_device=$sd_device fs_type=$fs_type"
+emit "sd_device=$sd_device fs_type=$fs_type"
 
-active=A
-active_hash=
-pending=
-pending_hash=
-tries=0
-
-if [ -f "$state" ]; then
-  candidate=$(state_field active_slot)
-  valid_slot "$candidate" && active=$candidate
-  active_hash=$(state_field active_sha256)
-  pending=$(state_field pending_slot)
-  pending_hash=$(state_field pending_sha256)
-  tries=$(state_field tries_remaining)
-fi
-
+active=$(field active_slot)
+valid_slot "$active" || active=A
+pending=$(field pending_slot)
+tries=$(field tries_remaining)
 case "$tries" in *[!0-9]*|'') tries=0 ;; esac
 valid_slot "$pending" || pending=
 
 slot=$active
-expected_hash=$active_hash
 if [ -n "$pending" ] && [ "$tries" -gt 0 ]; then
   slot=$pending
-  expected_hash=$pending_hash
   tries=$((tries - 1))
   new=$statedir/boot-state.new
   {
-    echo format=1
+    echo format=2
     echo active_slot="$active"
-    [ -n "$active_hash" ] && echo active_sha256="$active_hash"
     echo pending_slot="$pending"
-    echo pending_release="$(state_field pending_release)"
-    echo pending_sha256="$pending_hash"
+    echo pending_release="$(field pending_release)"
     echo tries_remaining="$tries"
   } >"$new"
   $BB sync
   $BB mv -f "$new" "$state"
   $BB sync
-elif [ -n "$pending" ]; then
-  echo "CAMEL_FALLBACK=tries_exhausted pending=$pending active=$active"
-  new=$statedir/boot-state.new
-  {
-    echo format=1
-    echo active_slot="$active"
-    [ -n "$active_hash" ] && echo active_sha256="$active_hash"
-    echo last_failed_slot="$pending"
-    echo tries_remaining=0
-  } >"$new"
-  $BB sync
-  $BB mv -f "$new" "$state"
-  $BB sync
 fi
 
-root_image=/camel-linux/images/rootfs-${slot}.ext4
-[ -f "/mnt/sd$root_image" ] || fail E11 "slot $slot image missing"
-
-case "$expected_hash" in
-  [0-9a-f][0-9a-f]*)
-    [ "${#expected_hash}" -eq 64 ] ||
-      fail E12 "slot $slot expected hash malformed"
-    actual_hash=$($BB sha256sum "/mnt/sd$root_image" | $BB awk '{print $1}')
-    [ "$actual_hash" = "$expected_hash" ] ||
-      fail E13 "slot $slot rootfs hash mismatch"
-    ;;
-  *)
-    fail E14 "slot $slot has no trusted rootfs hash"
-    ;;
-esac
+loop_device=
+if ! mount_slot "$slot"; then
+  if [ "$slot" != "$active" ]; then
+    emit "CAMEL_FALLBACK=slot_invalid failed=$slot active=$active"
+    write_failed_state "$slot"
+    slot=$active
+    mount_slot "$slot" || fail E13 "active slot $slot is not bootable"
+  else
+    fail E13 "active slot $slot is not bootable"
+  fi
+fi
 
 echo "$slot" >/run/camel-slot
-echo "CAMEL_SLOT=$slot root_image=$root_image tries_remaining=$tries"
-
-loop_device=$($BB losetup -f)
-[ -n "$loop_device" ] || fail E20 "no loop device available"
-$BB losetup "$loop_device" "/mnt/sd$root_image" ||
-  fail E21 "loop attach failed"
-stage LOOP_READY
-
-$BB mount -t ext4 -o rw,noatime "$loop_device" /newroot ||
-  fail E30 "ext4 root mount failed"
 stage ROOT_READY
+emit "CAMEL_SLOT=$slot loop_device=$loop_device"
 
 $BB mkdir -p /newroot/dev /newroot/proc /newroot/sys /newroot/run \
   /newroot/mnt/sd
@@ -157,5 +181,6 @@ $BB mount --move /run /newroot/run || fail E43 "move /run failed"
 $BB mount --move /mnt/sd /newroot/mnt/sd || fail E44 "move SD failed"
 
 stage SWITCH_ROOT
+emit "Starting Debian systemd as PID 1"
 exec $BB switch_root /newroot /sbin/init
 fail E50 "switch_root returned"

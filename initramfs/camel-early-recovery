@@ -1,0 +1,94 @@
+#!/bin/busybox sh
+
+BB=/bin/busybox
+gadget=/sys/kernel/config/usb_gadget/camel
+log=/run/camel-early-recovery.log
+
+exec >>"$log" 2>&1
+
+report() {
+  echo "$*"
+  echo "<6>CAMEL: $*" >/dev/kmsg 2>/dev/null || true
+}
+
+die() {
+  report "CAMEL_EARLY_RECOVERY_FAIL=$1"
+  exit "$1"
+}
+
+report "CAMEL_EARLY_RECOVERY_START=1"
+
+$BB mkdir -p /sys/kernel/config /run
+if ! $BB grep -qs ' /sys/kernel/config configfs ' /proc/mounts; then
+  $BB mount -t configfs configfs /sys/kernel/config || die 10
+fi
+report "CAMEL_USB_STAGE=CONFIGFS"
+
+$BB mkdir -p "$gadget/strings/0x409"
+$BB mkdir -p "$gadget/configs/c.1/strings/0x409"
+printf 0x1d6b >"$gadget/idVendor"
+printf 0x0104 >"$gadget/idProduct"
+printf CAMEL-SM-T970-RESCUE >"$gadget/strings/0x409/serialnumber"
+printf 'CAMEL Linux' >"$gadget/strings/0x409/manufacturer"
+printf 'CAMEL early recovery' >"$gadget/strings/0x409/product"
+printf 'NCM network + ACM serial rescue' \
+  >"$gadget/configs/c.1/strings/0x409/configuration"
+
+$BB mkdir -p "$gadget/functions/ncm.usb0"
+$BB mkdir -p "$gadget/functions/acm.GS0"
+[ -e "$gadget/configs/c.1/ncm.usb0" ] ||
+  $BB ln -s "$gadget/functions/ncm.usb0" \
+    "$gadget/configs/c.1/ncm.usb0"
+[ -e "$gadget/configs/c.1/acm.GS0" ] ||
+  $BB ln -s "$gadget/functions/acm.GS0" \
+    "$gadget/configs/c.1/acm.GS0"
+
+if [ ! -s "$gadget/UDC" ]; then
+  count=0
+  while [ "$count" -lt 10 ]; do
+    udc=
+    for path in /sys/class/udc/*; do
+      [ -e "$path" ] || continue
+      udc=${path##*/}
+      break
+    done
+    if [ -n "$udc" ]; then
+      printf '%s' "$udc" >"$gadget/UDC"
+      break
+    fi
+    count=$((count + 1))
+    $BB sleep 1
+  done
+fi
+
+count=0
+while [ "$count" -lt 10 ] && [ ! -e /sys/class/net/usb0 ]; do
+  count=$((count + 1))
+  $BB sleep 1
+done
+[ -e /sys/class/net/usb0 ] || die 11
+report "CAMEL_USB_STAGE=BOUND"
+
+$BB ip link set usb0 up
+$BB ip address replace 172.31.0.1/24 dev usb0
+
+$BB cat >/run/udhcpd.conf <<'EOF'
+start 172.31.0.2
+end 172.31.0.2
+interface usb0
+option subnet 255.255.255.0
+option router 172.31.0.1
+option lease 3600
+lease_file /run/udhcpd.leases
+pidfile /run/udhcpd.pid
+EOF
+: >/run/udhcpd.leases
+$BB udhcpd /run/udhcpd.conf
+
+# This shell exists only in the separately selected recovery boot and is
+# reachable only through the directly attached USB network.
+$BB telnetd -p 2323 -l /bin/sh
+if [ -c /dev/ttyGS0 ]; then
+  $BB setsid $BB getty -L 115200 ttyGS0 vt100 &
+fi
+report "CAMEL_EARLY_RECOVERY_READY=172.31.0.1:2323,ttyGS0"

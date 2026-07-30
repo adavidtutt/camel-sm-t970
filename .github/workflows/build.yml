@@ -50,7 +50,7 @@ jobs:
 
   recovery:
     needs: rootfs
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     env:
       KERNEL_RELEASE_DIR: build/kernel-release

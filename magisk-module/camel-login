@@ -1,0 +1,3 @@
+#!/system/bin/sh
+exec /data/adb/modules/camel_linux/busybox \
+  chroot /data/adb/camel-root /bin/bash -l

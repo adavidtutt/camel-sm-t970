@@ -1,0 +1,69 @@
+#!/bin/sh
+set -eu
+
+base=${CAMEL_RUNTIME_BASE:-/opt/camel-runtime}
+current=$base/current
+previous=$base/previous
+
+field() {
+  key=$1
+  sed -n "s/^${key}=//p" "$2" | sed -n '1p'
+}
+
+activate() {
+  release=$1
+  case "$release" in
+    *[!A-Za-z0-9._-]*|'')
+      echo "invalid CAMEL release id: $release" >&2
+      exit 2
+      ;;
+  esac
+  target=$base/releases/$release
+  manifest=$target/camel-runtime.env
+  entry=$target/bin/camel-runtime
+  [ -d "$target" ] && [ -x "$entry" ] || {
+    echo "CAMEL payload is incomplete: $target" >&2
+    exit 3
+  }
+  [ "$(field CAMEL_HOST_ABI "$manifest")" = 1 ] || {
+    echo "CAMEL payload has an incompatible host ABI" >&2
+    exit 4
+  }
+  CAMEL_REPO_ROOT=$target \
+  CAMEL_CONTEXT_STATE_DIR=${CAMEL_CONTEXT_STATE_DIR:-/home/camel/.camel/context} \
+  CAMEL_PYTHON=${CAMEL_PYTHON:-/usr/bin/python3} \
+  CAMEL_REAL_CODEX_PATH=/bin/true \
+  CAMEL_REAL_CLAUDE_PATH=/bin/true \
+    "$entry" /status | grep -q '^status=pass$' || {
+      echo "CAMEL payload failed its status probe" >&2
+      exit 5
+    }
+
+  old=
+  [ -L "$current" ] && old=$(readlink "$current")
+  mkdir -p "$base"
+  next=$base/current.new
+  rm -f "$next"
+  ln -s "releases/$release" "$next"
+  mv -Tf "$next" "$current"
+  if [ -n "$old" ]; then
+    prior=$base/previous.new
+    rm -f "$prior"
+    ln -s "$old" "$prior"
+    mv -Tf "$prior" "$previous"
+  fi
+  echo "CAMEL_ACTIVE_RELEASE=$release"
+}
+
+case "${1:-}" in
+  --rollback)
+    [ -L "$previous" ] || {
+      echo "no previous CAMEL payload" >&2
+      exit 6
+    }
+    prior=$(readlink "$previous")
+    activate "${prior##*/}"
+    ;;
+  "") echo "usage: camel-runtime-switch RELEASE|--rollback" >&2; exit 2 ;;
+  *) activate "$1" ;;
+esac

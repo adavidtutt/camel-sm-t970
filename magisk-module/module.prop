@@ -1,0 +1,6 @@
+id=camel_linux
+name=CAMEL Linux Native Runtime
+version=0.1
+versionCode=1
+author=Black Flag Data Labs
+description=Mounts the native CAMEL rootfs and exposes its bash shell.

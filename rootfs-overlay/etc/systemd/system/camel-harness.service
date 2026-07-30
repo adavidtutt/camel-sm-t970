@@ -1,0 +1,14 @@
+[Unit]
+Description=Validate the machine-native CAMEL harness
+After=local-fs.target
+Before=camel-ui.service
+
+[Service]
+Type=oneshot
+User=camel
+Environment=HOME=/home/camel
+ExecStart=/usr/local/bin/camel doctor
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

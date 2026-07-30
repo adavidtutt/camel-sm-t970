@@ -13,6 +13,19 @@ mkdir -p "$modules/kernel/drivers"
 printf kernel >"$source_dir/Image.gz"
 printf dtb >"$source_dir/dtb"
 printf dtbo >"$source_dir/dtbo.img"
+cat >"$source_dir/camel-kernel.config" <<'EOF'
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_BLK_DEV_LOOP=y
+CONFIG_EXT4_FS=y
+CONFIG_SDFAT_FS=y
+CONFIG_CONFIGFS_FS=y
+CONFIG_USB_GADGET=y
+CONFIG_USB_CONFIGFS=y
+CONFIG_USB_CONFIGFS_NCM=y
+CONFIG_SECURITY_SELINUX_BOOTPARAM=y
+CONFIG_INET=y
+EOF
 printf module >"$modules/kernel/drivers/camel.ko"
 printf 'kernel/drivers/camel.ko:\n' >"$modules/modules.dep"
 (

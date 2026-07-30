@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+config=${HOME}/.camel/config.toml
+mkdir -p "${config%/*}"
+tmp=${config}.new
+: >"$tmp"
+
+for tool in codex claude; do
+  candidate=$(command -v "$tool" 2>/dev/null || true)
+  case "$candidate" in
+    /usr/local/bin/camel-*|"") ;;
+    *) printf 'real_%s_path = "%s"\n' "$tool" "$candidate" >>"$tmp" ;;
+  esac
+done
+
+chmod 0600 "$tmp"
+mv "$tmp" "$config"
+exec /usr/local/bin/camel tools doctor
