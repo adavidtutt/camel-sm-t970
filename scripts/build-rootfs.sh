@@ -112,6 +112,8 @@ sudo ln -sfn /etc/systemd/system/camel-boot-commit.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-boot-commit.service"
 sudo ln -sfn /etc/systemd/system/camel-drive.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-drive.service"
+sudo ln -sfn /etc/systemd/system/camel-harness.service \
+  "$mount_dir/etc/systemd/system/multi-user.target.wants/camel-harness.service"
 sudo ln -sfn /lib/systemd/system/systemd-networkd.service \
   "$mount_dir/etc/systemd/system/multi-user.target.wants/systemd-networkd.service"
 sudo ln -sfn /lib/systemd/system/systemd-resolved.service \

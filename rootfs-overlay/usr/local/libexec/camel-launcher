@@ -1,3 +1,2 @@
 #!/bin/sh
-export CAMEL_REPO_ROOT=/opt/camel
-exec /usr/bin/python3 /opt/camel/systems/harness/live/camel_live.py "$@"
+exec /usr/local/libexec/camel-host "$@"

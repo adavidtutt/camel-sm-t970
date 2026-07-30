@@ -1,0 +1,127 @@
+#!/bin/sh
+set -eu
+
+abi=1
+host_config=${CAMEL_HOST_CONFIG:-/etc/camel/host.conf}
+
+config_value() {
+  key=$1
+  [ -f "$host_config" ] || return 0
+  sed -n "s/^${key}=//p" "$host_config" | sed -n '1p'
+}
+
+runtime_base=${CAMEL_RUNTIME_BASE:-$(config_value CAMEL_RUNTIME_BASE)}
+[ -n "$runtime_base" ] || runtime_base=/opt/camel-runtime
+current=${CAMEL_RUNTIME_CURRENT:-"$runtime_base/current"}
+manifest=$current/camel-runtime.env
+entry=$current/bin/camel-runtime
+
+home_dir=${HOME:-/home/camel}
+CAMEL_HOME=${CAMEL_HOME:-"$home_dir/.camel"}
+CAMEL_CONTEXT_STATE_DIR=${CAMEL_CONTEXT_STATE_DIR:-"$CAMEL_HOME/context"}
+CAMEL_REPO_ROOT=$current
+export CAMEL_HOME CAMEL_CONTEXT_STATE_DIR CAMEL_REPO_ROOT
+
+real_tool() {
+  case "$1" in
+    codex)
+      value=${CAMEL_REAL_CODEX_PATH:-$(config_value CAMEL_REAL_CODEX_PATH)}
+      ;;
+    claude)
+      value=${CAMEL_REAL_CLAUDE_PATH:-$(config_value CAMEL_REAL_CLAUDE_PATH)}
+      ;;
+    *) return 2 ;;
+  esac
+  [ -n "$value" ] || return 1
+  printf '%s\n' "$value"
+}
+
+manifest_value() {
+  key=$1
+  [ -f "$manifest" ] || return 0
+  sed -n "s/^${key}=//p" "$manifest" | sed -n '1p'
+}
+
+payload_ready() {
+  [ -x "$entry" ] &&
+    [ "$(manifest_value CAMEL_HOST_ABI)" = "$abi" ]
+}
+
+passthrough() {
+  tool=$1
+  shift
+  real=$(real_tool "$tool") || {
+    echo "CAMEL host: real $tool binary is unavailable" >&2
+    exit 127
+  }
+  exec "$real" "$@"
+}
+
+command=${1:-}
+[ "$#" -gt 0 ] && shift
+
+case "$command" in
+  version)
+    printf 'camel_host_abi=%s\n' "$abi"
+    printf 'camel_release=%s\n' "$(manifest_value CAMEL_RELEASE_ID)"
+    ;;
+  doctor|status|/status)
+    payload_ready || {
+      echo "status=fail"
+      echo "reason=no_compatible_payload"
+      exit 1
+    }
+    echo "status=pass"
+    echo "camel_host_abi=$abi"
+    echo "camel_release=$(manifest_value CAMEL_RELEASE_ID)"
+    "$entry" /status
+    ;;
+  recall|ingest|learn|report|seed|seed_codex|add|consolidate|related)
+    payload_ready || {
+      echo "CAMEL host: no ABI-$abi payload is active" >&2
+      exit 126
+    }
+    exec "$entry" context "$command" "$@"
+    ;;
+  tool)
+    tool=${1:-}
+    [ -n "$tool" ] || {
+      echo "usage: camel tool codex|claude [args...]" >&2
+      exit 2
+    }
+    shift
+    case "$tool" in codex|claude) ;; *) exit 2 ;; esac
+    real=$(real_tool "$tool") || {
+      echo "CAMEL host: real $tool binary is unavailable" >&2
+      exit 127
+    }
+    case "$tool" in
+      codex) CAMEL_REAL_CODEX_PATH=$real; export CAMEL_REAL_CODEX_PATH ;;
+      claude) CAMEL_REAL_CLAUDE_PATH=$real; export CAMEL_REAL_CLAUDE_PATH ;;
+    esac
+    if [ "${CAMEL_HOST_TOOL_DEPTH:-0}" -gt 0 ] || ! payload_ready; then
+      passthrough "$tool" "$@"
+    fi
+    CAMEL_HOST_TOOL_DEPTH=1
+    export CAMEL_HOST_TOOL_DEPTH
+    exec "$entry" tool "$tool" "$@"
+    ;;
+  runtime)
+    payload_ready || exit 126
+    exec "$entry" "$@"
+    ;;
+  "")
+    payload_ready || {
+      echo "CAMEL host: no ABI-$abi payload is active" >&2
+      exit 126
+    }
+    exec "$entry"
+    ;;
+  *)
+    payload_ready || {
+      echo "CAMEL host: no ABI-$abi payload is active" >&2
+      exit 126
+    }
+    exec "$entry" "$command" "$@"
+    ;;
+esac

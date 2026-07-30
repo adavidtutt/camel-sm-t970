@@ -4,4 +4,4 @@ case "${0##*/}" in
   *claude) tool=claude ;;
   *) echo "unknown CAMEL tool launcher" >&2; exit 2 ;;
 esac
-exec /usr/local/bin/camel tool "$tool" "$@"
+exec /usr/local/libexec/camel-host tool "$tool" "$@"

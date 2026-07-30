@@ -17,25 +17,26 @@ cleanup() {
 }
 trap cleanup EXIT
 
-quote() {
+validate_path() {
   case "$1" in
     *\"*|*$'\n'*)
       echo "unsupported path for debugfs injection: $1" >&2
       exit 3
       ;;
   esac
-  printf '"%s"' "$1"
 }
 
 set_owner() {
   relative=$1
   destination=$2
   case "$relative" in
-    opt/camel|opt/camel/*)
-      printf 'set_inode_field %s uid 1000\n' \
-        "$(quote "$destination")" >>"$commands"
-      printf 'set_inode_field %s gid 1000\n' \
-        "$(quote "$destination")" >>"$commands"
+    opt/camel-runtime|opt/camel-runtime/*|\
+    home/camel/.claude|home/camel/.claude/*|\
+    home/camel/.codex|home/camel/.codex/*)
+      printf 'set_inode_field "%s" uid 1000\n' \
+        "$destination" >>"$commands"
+      printf 'set_inode_field "%s" gid 1000\n' \
+        "$destination" >>"$commands"
       ;;
   esac
 }
@@ -43,19 +44,22 @@ set_owner() {
 while IFS= read -r -d '' path; do
   relative=${path#"$tree"/}
   destination=/$relative
-  printf 'mkdir %s\n' "$(quote "$destination")" >>"$commands"
+  validate_path "$destination"
+  printf 'mkdir "%s"\n' "$destination" >>"$commands"
   set_owner "$relative" "$destination"
 done < <(find "$tree" -mindepth 1 -type d -print0 | sort -z)
 
 while IFS= read -r -d '' path; do
   relative=${path#"$tree"/}
   destination=/$relative
-  printf 'rm %s\n' "$(quote "$destination")" >>"$commands"
-  printf 'write %s %s\n' "$(quote "$path")" "$(quote "$destination")" \
+  validate_path "$path"
+  validate_path "$destination"
+  printf 'rm "%s"\n' "$destination" >>"$commands"
+  printf 'write "%s" "%s"\n' "$path" "$destination" \
     >>"$commands"
   mode=$(stat -c %a "$path")
-  printf 'set_inode_field %s mode 0100%s\n' \
-    "$(quote "$destination")" "$mode" >>"$commands"
+  printf 'set_inode_field "%s" mode 0100%s\n' \
+    "$destination" "$mode" >>"$commands"
   set_owner "$relative" "$destination"
 done < <(find "$tree" -mindepth 1 -type f -print0 | sort -z)
 
@@ -63,9 +67,11 @@ while IFS= read -r -d '' path; do
   relative=${path#"$tree"/}
   destination=/$relative
   target=$(readlink "$path")
-  printf 'rm %s\n' "$(quote "$destination")" >>"$commands"
-  printf 'symlink %s %s\n' \
-    "$(quote "$destination")" "$(quote "$target")" >>"$commands"
+  validate_path "$destination"
+  validate_path "$target"
+  printf 'rm "%s"\n' "$destination" >>"$commands"
+  printf 'symlink "%s" "%s"\n' \
+    "$destination" "$target" >>"$commands"
   set_owner "$relative" "$destination"
 done < <(find "$tree" -mindepth 1 -type l -print0 | sort -z)
 

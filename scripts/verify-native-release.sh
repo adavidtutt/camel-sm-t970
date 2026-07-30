@@ -4,6 +4,8 @@ set -euo pipefail
 root_dir=$(cd "$(dirname "$0")/.." && pwd)
 boot=${1:-"$root_dir/out/native-v5/camel-native-v5.img"}
 rootfs=${2:-"$root_dir/out/native-v5/rootfs-B.ext4"}
+boot=$(realpath "$boot")
+rootfs=$(realpath "$rootfs")
 magiskboot=${MAGISKBOOT:-"$HOME/camel-recovery-inspect/magiskboot"}
 avbtool=${AVBTOOL:-"$root_dir/build/recovery-v2-final/android-tools/avb/avbtool.py"}
 
@@ -23,6 +25,14 @@ expect_path() {
   debugfs -R "stat $1" "$rootfs" 2>/dev/null | grep -q '^Inode:'
 }
 
+current_target=$(debugfs -R 'stat /opt/camel-runtime/current' "$rootfs" \
+  2>/dev/null | sed -n 's/^Fast link dest: "\(.*\)"/\1/p')
+case "$current_target" in
+  releases/[A-Za-z0-9._-]*) ;;
+  *) echo "invalid active CAMEL payload link: $current_target" >&2; exit 3 ;;
+esac
+payload=/opt/camel-runtime/$current_target
+
 for path in \
   /sbin/init \
   /usr/lib/systemd/systemd \
@@ -32,9 +42,15 @@ for path in \
   /usr/bin/sway \
   /usr/bin/foot \
   /usr/bin/python3.13 \
-  /opt/camel/systems/harness/live/camel_live.py \
+  /opt/camel-runtime/current \
+  "$payload/bin/camel-runtime" \
+  "$payload/camel_ctx.py" \
   /opt/codex/bin/codex \
-  /usr/local/bin/claude \
+  /opt/claude/bin/claude \
+  /usr/local/libexec/camel-host \
+  /usr/local/sbin/camel-runtime-switch \
+  /home/camel/.claude/agents/camel.md \
+  /home/camel/.codex/skills/camel-recall/SKILL.md \
   /etc/systemd/system/graphical.target.wants/camel-ui.service; do
   expect_path "$path" || {
     echo "rootfs path missing: $path" >&2
@@ -46,7 +62,7 @@ debugfs -R 'cat /usr/lib/os-release' "$rootfs" 2>/dev/null |
   grep -qx 'ID=debian'
 debugfs -R 'cat /etc/camel/rootfs-release' "$rootfs" 2>/dev/null |
   grep -qx 'CAMEL_NATIVE_ROOTFS=5'
-debugfs -R 'stat /opt/camel/systems/harness/live/camel_live.py' \
+debugfs -R "stat $payload/camel_ctx.py" \
   "$rootfs" 2>/dev/null | grep -q 'User:[[:space:]]*1000'
 
 audit=$(mktemp -d "$root_dir/build/verify-native-v5.XXXXXX")
