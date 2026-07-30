@@ -75,13 +75,6 @@ case "$active" in
     exit 22
     ;;
 esac
-active_image="$images/rootfs-${active}.ext4"
-[ -f "$active_image" ] || {
-  echo "FAIL: active slot image is missing: $active_image" >&2
-  exit 23
-}
-active_hash=$(sha256sum "$active_image" | awk '{print $1}')
-
 mkdir -p "$images" "$state_dir"
 target="$images/rootfs-${inactive}.ext4"
 partial="$target.partial"
@@ -97,12 +90,10 @@ sync
 
 state_tmp="$state_dir/boot-state.new"
 {
-  printf 'format=1\n'
+  printf 'format=2\n'
   printf 'active_slot=%s\n' "$active"
-  printf 'active_sha256=%s\n' "$active_hash"
   printf 'pending_slot=%s\n' "$inactive"
   printf 'pending_release=%s\n' "$release"
-  printf 'pending_sha256=%s\n' "$expected_hash"
   printf 'tries_remaining=3\n'
 } >"$state_tmp"
 sync "$state_tmp"

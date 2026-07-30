@@ -1,0 +1,3 @@
+CAMEL_NATIVE_ROOTFS=5
+BASE=debian-trixie
+INIT=systemd

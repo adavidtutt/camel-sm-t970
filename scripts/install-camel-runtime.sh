@@ -47,6 +47,13 @@ sed -i \
   -e 's|REPO_ROOT = Path("/opt/camel")|REPO_ROOT = Path(os.environ.get("CAMEL_REPO_ROOT", "/opt/camel")).resolve()|' \
   -e 's|if REPO_ROOT.name != "camel-sterile-mouth-work":|if not (REPO_ROOT / "spec/math/README.md").is_file():|' \
   -e 's|if not str(ROOT).startswith("/opt/camel/"):|if not str(ROOT).startswith(str(REPO_ROOT) + os.sep):|' \
+  -e 's|OLD_TARGET = Path("/opt/camel/experiments/engine/081-pty-tee-tool-observer/camel_pty_tee_tool_observer.py")|OLD_TARGET = REPO_ROOT / "experiments/engine/081-pty-tee-tool-observer/camel_pty_tee_tool_observer.py"|' \
+  -e 's|EXPERIMENT_083 = Path("/opt/camel/experiments/engine/083-active-memory-routing-enforcement/camel_active_memory_routing.py")|EXPERIMENT_083 = REPO_ROOT / "experiments/engine/083-active-memory-routing-enforcement/camel_active_memory_routing.py"|' \
+  -e 's|SUP_075 = Path("/opt/camel/experiments/engine/075-camel-noarg-repl-fix/camel_noarg_repl_fix.py")|SUP_075 = REPO_ROOT / "experiments/engine/075-camel-noarg-repl-fix/camel_noarg_repl_fix.py"|' \
+  -e 's|SUP_076 = Path("/opt/camel/experiments/engine/076-persistent-task-queue-runner/camel_queue_runner.py")|SUP_076 = REPO_ROOT / "experiments/engine/076-persistent-task-queue-runner/camel_queue_runner.py"|' \
+  -e 's|SUP_077 = Path("/opt/camel/experiments/engine/077-bounded-queue-worker-daemon/camel_queue_worker.py")|SUP_077 = REPO_ROOT / "experiments/engine/077-bounded-queue-worker-daemon/camel_queue_worker.py"|' \
+  -e 's|SUP_078 = Path("/opt/camel/experiments/engine/078-local-scheduler-worker-tick/camel_scheduler.py")|SUP_078 = REPO_ROOT / "experiments/engine/078-local-scheduler-worker-tick/camel_scheduler.py"|' \
+  -e 's|SUP_081 = Path("/opt/camel/experiments/engine/081-pty-tee-tool-observer/camel_pty_tee_tool_observer.py")|SUP_081 = REPO_ROOT / "experiments/engine/081-pty-tee-tool-observer/camel_pty_tee_tool_observer.py"|' \
   "$live"
 
 install -D -m 0755 \
