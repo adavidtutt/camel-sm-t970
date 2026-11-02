@@ -1,0 +1,10 @@
+event,utc_2026_11_01,data_channel,qualifier
+first_vr_le_8000,17:48:26.368244,decoded_vertical_rate,observed_field
+first_vr_le_10000,17:48:28.077289,decoded_vertical_rate,observed_field
+first_vr_le_20000,17:48:37.197969,decoded_vertical_rate,observed_field
+first_vr_le_22000,17:48:52.576239,decoded_vertical_rate,observed_field
+first_vr_le_32640,17:49:03.606639,decoded_vertical_rate,saturated_reported_limit
+first_alt_lt_22000,17:49:04.388869,barometric_altitude,reported_21925ft
+first_repeated_alt_8750,17:49:22.955011,barometric_altitude,field_stale_afterward
+last_reported_position,17:49:31.540320,latitude_longitude,timestamp_origin_unverified
+last_reported_speed_track,17:49:32.165558,ground_speed_track,timestamp_origin_unverified
